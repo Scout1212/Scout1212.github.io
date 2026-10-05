@@ -221,12 +221,12 @@
         dartboard: 'the dartboard', square: 'the square', triangle: 'the triangle', hexagon: 'the hexagon', ellipse: 'the ellipse',
       };
       if (!best) {
-        readout.innerHTML = `<span class="bad">No target found</span> — nothing is round enough to pass ${threshold.toFixed(2)}.`;
+        readout.innerHTML = `<span class="bad">No target found</span>: nothing is round enough to pass ${threshold.toFixed(2)}.`;
       } else {
         const fooled = best.sh.kind !== 'dartboard';
         readout.innerHTML =
           `🎯 Target: <b>${names[best.sh.kind]}</b> at pixel (${Math.round(best.sh.x * 2)}, ${Math.round(best.sh.y * 2)}), score ${best.score.toFixed(2)}` +
-          (fooled ? ` — <span class="bad">fooled!</span>` : ` — <span class="ok">locked on</span>`) +
+          (fooled ? `, <span class="bad">fooled!</span>` : `, <span class="ok">locked on</span>`) +
           (passing.length > 1 ? ` · ${passing.length - 1} other shape${passing.length > 2 ? 's' : ''} also passed` : '');
       }
     }

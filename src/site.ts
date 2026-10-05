@@ -4,7 +4,7 @@ export const site = {
   tagline: 'Robots, circuits & code',
   season: 'Season One',
   intro:
-    'I build machines that move, see, and play — from a LEGO maze-runner to a turret that finds its own target. This is the program so far.',
+    'I take what I learn and build it into machines that move, see, and play, from a LEGO maze-runner to a turret that finds its own target. This is the program so far.',
   // Leave a value empty ('') to hide it.
   links: {
     email: '',

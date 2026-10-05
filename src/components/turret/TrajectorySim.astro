@@ -6,7 +6,7 @@
 <figure class="exhibit traj" data-traj>
   <div class="exhibit-head">
     <span class="eyebrow">▶ Interactive · Hitting the target</span>
-    <span class="hint">Drag the dartboard, then fire — or let it solve the angle.</span>
+    <span class="hint">Drag the dartboard, then fire, or let it solve the angle.</span>
   </div>
 
   <canvas width="1280" height="640" aria-label="Side view of the turret firing a ball at a target"></canvas>
@@ -30,7 +30,7 @@
 
   <p class="readout" aria-live="polite"></p>
   <figcaption class="exhibit-note">
-    Solving for the angle uses tan θ = (v² ± √(v⁴ − g(g·x² + 2·y·v²))) ÷ (g·x). There are usually two answers — a flat,
+    Solving for the angle uses tan θ = (v² ± √(v⁴ − g(g·x² + 2·y·v²))) ÷ (g·x). There are usually two answers: a flat,
     fast shot and a high lob. Ignores air resistance, like the first version of our math.
   </figcaption>
 </figure>
@@ -191,7 +191,7 @@
       const done = () => {
         readout.innerHTML = flight!.hit
           ? `<span class="ok">Bullseye.</span> ${Number(aIn.value).toFixed(1)}° at ${Number(vIn.value).toFixed(1)} m/s.`
-          : `<span class="bad">Miss.</span> Adjust the angle — or let it solve the angle for you.`;
+          : `<span class="bad">Miss.</span> Adjust the angle, or let it solve the angle for you.`;
       };
       if (reduce) {
         ballIndex = flight.pts.length - 1;
@@ -212,7 +212,7 @@
       const deg = solve(high);
       if (deg === null || deg < 5 || deg > 80) {
         flight = null;
-        readout.innerHTML = `<span class="bad">Out of range.</span> At ${Number(vIn.value).toFixed(1)} m/s no angle reaches it — add speed.`;
+        readout.innerHTML = `<span class="bad">Out of range.</span> At ${Number(vIn.value).toFixed(1)} m/s no angle reaches it. Add speed.`;
         draw();
         return;
       }

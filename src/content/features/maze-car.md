@@ -7,7 +7,7 @@ released: Feb – Mar 2025
 genres: [Robotics, Electrical, Arduino]
 poster:
   src: /media/maze-car/build.jpg
-  alt: The maze robot — a LEGO chassis with an Arduino, breadboard, wiring and sensors mounted on top
+  alt: "The maze robot: a LEGO chassis with an Arduino, breadboard, wiring and sensors mounted on top"
 trailer:
   src: /media/maze-car/run-blue.mp4
   poster: /media/maze-car/run-blue-poster.jpg
@@ -22,7 +22,7 @@ credits:
 gallery:
   - src: /media/maze-car/sketch.jpg
     alt: Hand-drawn plans showing the robot from the side and from underneath, with every component labeled
-    caption: The storyboard — side and underside views, planned before a single brick went on.
+    caption: "The storyboard: side and underside views, planned before a single brick went on."
   - src: /media/maze-car/build.jpg
     alt: The finished robot on a table, wires running from the Arduino to sensors on the LEGO frame
     caption: The finished build, mid-wiring.
@@ -35,7 +35,7 @@ note: The original code and write-up lived on a school account and didn't make i
 
 ## Synopsis
 
-The challenge: build a car that gets itself through a maze — no remote control, no help. I built the body out of LEGO so I could rebuild it quickly every time something didn't fit, and wired everything to an Arduino on a breadboard.
+The challenge was to build a car that gets itself through a maze, with no remote control and no help. I built the body out of LEGO so I could rebuild it quickly every time something didn't fit, and wired everything to an Arduino on a breadboard.
 
 ## The storyboard
 
@@ -45,4 +45,4 @@ Before building anything, I drew the whole robot by hand from the side and from 
 
 The car uses a front distance sensor to see walls coming, plus photoresistors and a flex sensor mounted around the frame. Two DC motors drive the wheels independently, so the car turns by spinning them at different speeds or in opposite directions.
 
-It ran two different mazes — a red one and a blue one — which meant the logic couldn't just memorize a route. It had to react to the walls it actually saw.
+It ran two different mazes, a red one and a blue one, which meant the logic couldn't just memorize a route. It had to react to the walls it actually saw.

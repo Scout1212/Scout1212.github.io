@@ -1,0 +1,311 @@
+---
+// Interactive 3D viewer for CAD exports (binary STL). three.js is only
+// downloaded once the viewer scrolls near the screen.
+interface Model {
+  name: string;
+  file: string;
+  blurb: string;
+  up?: 'x' | 'y' | 'z' | '-x' | '-y' | '-z'; // which axis of the file points up (Onshape: z)
+}
+interface Props {
+  models: Model[];
+}
+const { models } = Astro.props;
+---
+
+<div class="viewer" data-viewer>
+  <div class="stage">
+    <canvas aria-label={`Interactive 3D model: ${models[0].name}. Drag to rotate, scroll or pinch to zoom.`}></canvas>
+    <p class="loading eyebrow">Threading the projector…</p>
+    <div class="hud">
+      <span class="eyebrow dims"></span>
+      <div class="hud-btns">
+        <button class="btn mode" aria-pressed="false" title="Toggle blueprint view">Blueprint</button>
+        <button class="btn spin" aria-pressed="true" title="Toggle auto-rotate">Spin</button>
+      </div>
+    </div>
+    <p class="hint eyebrow">Drag to rotate · Scroll to zoom</p>
+  </div>
+
+  <div class="picker" role="tablist" aria-label="Choose a part">
+    {
+      models.map((m, i) => (
+        <button class="pick" role="tab" data-i={i} aria-selected={i === 0 ? 'true' : 'false'}>
+          {m.name}
+        </button>
+      ))
+    }
+  </div>
+  <p class="blurb" aria-live="polite">{models[0].blurb}</p>
+
+  <script type="application/json" data-models set:html={JSON.stringify(models)} />
+</div>
+
+<script>
+  type Model = { name: string; file: string; blurb: string; up?: string };
+
+  document.querySelectorAll<HTMLElement>('[data-viewer]').forEach((root) => {
+    const models: Model[] = JSON.parse(root.querySelector('[data-models]')!.textContent || '[]');
+    const canvas = root.querySelector('canvas')!;
+    const loading = root.querySelector<HTMLElement>('.loading')!;
+    const dims = root.querySelector<HTMLElement>('.dims')!;
+    const blurb = root.querySelector<HTMLElement>('.blurb')!;
+    const picks = root.querySelectorAll<HTMLButtonElement>('.pick');
+    const modeBtn = root.querySelector<HTMLButtonElement>('.mode')!;
+    const spinBtn = root.querySelector<HTMLButtonElement>('.spin')!;
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const boot = async () => {
+      const THREE = await import('three');
+      const { STLLoader } = await import('three/examples/jsm/loaders/STLLoader.js');
+      const { OrbitControls } = await import('three/examples/jsm/controls/OrbitControls.js');
+
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(35, 16 / 9, 0.01, 100);
+
+      // stage lighting: warm key, cool rim, soft fill
+      scene.add(new THREE.HemisphereLight(0xf4f1ec, 0x2a1416, 1.0));
+      const key = new THREE.DirectionalLight(0xfff0d6, 2.2);
+      key.position.set(3, 5, 4);
+      scene.add(key);
+      const rim = new THREE.DirectionalLight(0x9fc4ff, 1.4);
+      rim.position.set(-4, 3, -4);
+      scene.add(rim);
+
+      // a pool of spotlight on the floor
+      const pool = (() => {
+        const c = document.createElement('canvas');
+        c.width = c.height = 256;
+        const g = c.getContext('2d')!;
+        const grad = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+        grad.addColorStop(0, 'rgba(255,228,160,0.55)');
+        grad.addColorStop(1, 'rgba(255,228,160,0)');
+        g.fillStyle = grad;
+        g.fillRect(0, 0, 256, 256);
+        const m = new THREE.Mesh(
+          new THREE.PlaneGeometry(3.2, 3.2),
+          new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }),
+        );
+        m.rotation.x = -Math.PI / 2;
+        return m;
+      })();
+      scene.add(pool);
+
+      const solidMat = new THREE.MeshStandardMaterial({ color: 0x9fb6d1, metalness: 0.35, roughness: 0.45 });
+      const ghostMat = new THREE.MeshBasicMaterial({ color: 0x0d2a4a, transparent: true, opacity: 0.35 });
+      const edgeMat = new THREE.LineBasicMaterial({ color: 0xcfe6ff });
+
+      const controls = new OrbitControls(camera, canvas);
+      controls.enableDamping = true;
+      controls.autoRotate = !reduce;
+      controls.autoRotateSpeed = 1.2;
+      controls.enablePan = false;
+      controls.minDistance = 1.2;
+      controls.maxDistance = 7;
+      controls.addEventListener('start', () => setSpin(false));
+      spinBtn.setAttribute('aria-pressed', String(!reduce));
+
+      const cache = new Map<string, { geo: any; edges: any; size: any }>();
+      const loader = new STLLoader();
+      let group: any = null;
+      let blueprint = false;
+
+      function orient(geo: any, up = 'z') {
+        const r = Math.PI / 2;
+        if (up === 'z') geo.rotateX(-r);
+        else if (up === '-z') geo.rotateX(r);
+        else if (up === 'x') geo.rotateZ(r);
+        else if (up === '-x') geo.rotateZ(-r);
+        else if (up === '-y') geo.rotateX(Math.PI);
+      }
+
+      async function load(m: Model) {
+        if (cache.has(m.file)) return cache.get(m.file)!;
+        const geo = await loader.loadAsync(m.file);
+        orient(geo, m.up);
+        geo.computeBoundingBox();
+        const size = new THREE.Vector3();
+        geo.boundingBox.getSize(size);
+        const realSize = size.clone(); // still in file units (metres)
+        // center it, sit it on the floor, and scale so every part fills the screen similarly
+        const c = new THREE.Vector3();
+        geo.boundingBox.getCenter(c);
+        geo.translate(-c.x, -geo.boundingBox.min.y, -c.z);
+        const s = 1.6 / Math.max(size.x, size.y, size.z);
+        geo.scale(s, s, s);
+        geo.computeVertexNormals();
+        const entry = { geo, edges: new THREE.EdgesGeometry(geo, 25), size: realSize };
+        cache.set(m.file, entry);
+        return entry;
+      }
+
+      // fit the camera to the part's bounding sphere, viewed from a three-quarter angle
+      function frame(geo: any) {
+        geo.computeBoundingSphere();
+        const r = geo.boundingSphere.radius;
+        const target = geo.boundingSphere.center.clone();
+        const dist = (r / Math.tan((camera.fov * Math.PI) / 360)) * 0.95;
+        const dir = new THREE.Vector3(-0.62, 0.42, 0.66).normalize();
+        controls.target.copy(target);
+        camera.position.copy(target).addScaledVector(dir, dist);
+        camera.lookAt(target);
+        controls.update();
+      }
+
+      function build(entry: { geo: any; edges: any }) {
+        if (group) scene.remove(group);
+        group = new THREE.Group();
+        group.add(new THREE.Mesh(entry.geo, blueprint ? ghostMat : solidMat));
+        if (blueprint) group.add(new THREE.LineSegments(entry.edges, edgeMat));
+        scene.add(group);
+        root.classList.toggle('is-blueprint', blueprint);
+      }
+
+      let current: { geo: any; edges: any; size: any } | null = null;
+      async function show(i: number) {
+        const m = models[i];
+        picks.forEach((p) => p.setAttribute('aria-selected', String(p.dataset.i === String(i))));
+        blurb.textContent = m.blurb;
+        loading.hidden = false;
+        current = await load(m);
+        loading.hidden = true;
+        build(current);
+        frame(current.geo);
+        const mm = (v: number) => Math.round(v * 1000);
+        dims.textContent = `${mm(current.size.x)} × ${mm(current.size.z)} × ${mm(current.size.y)} mm`;
+        canvas.setAttribute('aria-label', `Interactive 3D model: ${m.name}. Drag to rotate, scroll or pinch to zoom.`);
+      }
+
+      function setSpin(on: boolean) {
+        controls.autoRotate = on;
+        spinBtn.setAttribute('aria-pressed', String(on));
+      }
+
+      function resize() {
+        const w = canvas.clientWidth;
+        const h = canvas.clientHeight;
+        renderer.setSize(w, h, false);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+      }
+      new ResizeObserver(resize).observe(canvas);
+      resize();
+
+      let visible = true;
+      new IntersectionObserver((e) => (visible = e[0].isIntersecting)).observe(canvas);
+      renderer.setAnimationLoop(() => {
+        if (!visible) return;
+        controls.update();
+        renderer.render(scene, camera);
+      });
+
+      picks.forEach((p) => p.addEventListener('click', () => show(Number(p.dataset.i))));
+      modeBtn.addEventListener('click', () => {
+        blueprint = !blueprint;
+        modeBtn.setAttribute('aria-pressed', String(blueprint));
+        if (current) build(current);
+      });
+      spinBtn.addEventListener('click', () => setSpin(!controls.autoRotate));
+
+      await show(0);
+    };
+
+    // only fetch three.js when the screen is about to be seen
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          io.disconnect();
+          boot().catch(() => (loading.textContent = 'The projector jammed. 3D view unavailable.'));
+        }
+      },
+      { rootMargin: '300px' },
+    );
+    io.observe(root);
+  });
+</script>
+
+<style>
+  .viewer { width: 100%; }
+  .stage {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    border-radius: 2px;
+    overflow: hidden;
+    background: radial-gradient(ellipse at 50% 70%, #2b1f1c 0%, #120d0c 65%, #070505 100%);
+    box-shadow: 0 0 60px rgba(246, 199, 91, 0.15);
+    transition: background 0.4s;
+  }
+  .is-blueprint .stage {
+    background:
+      linear-gradient(rgba(207, 230, 255, 0.07) 1px, transparent 1px) 0 0 / 24px 24px,
+      linear-gradient(90deg, rgba(207, 230, 255, 0.07) 1px, transparent 1px) 0 0 / 24px 24px,
+      radial-gradient(ellipse at center, #123a66, #071a30);
+  }
+  canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+  canvas:active { cursor: grabbing; }
+  .loading {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    margin: 0;
+    color: var(--bulb);
+    font-size: 0.7rem;
+    pointer-events: none;
+  }
+  .loading[hidden] { display: none; }
+  .hud {
+    position: absolute;
+    top: 0.6rem;
+    left: 0.75rem;
+    right: 0.6rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    pointer-events: none;
+  }
+  .hud > * { pointer-events: auto; }
+  .dims { color: var(--bulb); font-size: 0.62rem; text-shadow: 0 1px 2px #000; }
+  .hud-btns { display: flex; gap: 0.35rem; }
+  .hud .btn { padding: 0.35em 0.65em; font-size: 0.58rem; background: rgba(18, 13, 12, 0.75); }
+  .hud .btn[aria-pressed='true'] { background: var(--bulb); }
+  .hint {
+    position: absolute;
+    bottom: 0.5rem;
+    left: 0;
+    right: 0;
+    margin: 0;
+    text-align: center;
+    font-size: 0.55rem;
+    color: rgba(239, 230, 214, 0.45);
+    pointer-events: none;
+  }
+  .picker { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem; margin-top: 1rem; }
+  .pick {
+    font-family: var(--mono);
+    font-size: 0.64rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.5em 0.85em;
+    border-radius: 3px;
+    border: 1px solid var(--house-line);
+    background: #120d0c;
+    color: var(--on-house);
+    cursor: pointer;
+  }
+  .pick:hover { border-color: var(--bulb); color: var(--bulb); }
+  .pick[aria-selected='true'] { background: var(--bulb); border-color: var(--bulb); color: #1a1208; }
+  .blurb {
+    max-width: 60ch;
+    margin: 0.8rem auto 0;
+    text-align: center;
+    font-style: italic;
+    color: var(--on-house-soft);
+    font-size: 1rem;
+    min-height: 3em;
+  }
+</style>

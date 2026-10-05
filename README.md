@@ -1,4 +1,4 @@
-# Robert Zamora — Now Showing
+# Robert Zamora · Now Showing
 
 My project portfolio, styled as a cinema program. Live at **https://scout1212.github.io**.
 

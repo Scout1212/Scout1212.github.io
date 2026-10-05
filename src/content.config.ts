@@ -23,6 +23,20 @@ const features = defineCollection({
     genres: z.array(z.string()),
     poster: media, // thumbnail on the home page
     trailer: media.optional(), // hero video or image on the project page
+    // 3D models shown on the screen instead of a trailer (binary STL files in public/)
+    viewer: z
+      .object({
+        models: z.array(
+          z.object({
+            name: z.string(),
+            file: z.string(),
+            blurb: z.string(),
+            up: z.enum(['x', 'y', 'z', '-x', '-y', '-z']).default('z'),
+          }),
+        ),
+        caption: z.string().optional(),
+      })
+      .optional(),
     // Group projects: who did what. Leave empty for solo work ("Directed by Robert Zamora").
     team: z
       .array(z.object({ name: z.string(), role: z.string(), href: z.string().optional(), me: z.boolean().default(false) }))

@@ -3,16 +3,41 @@ title: The Self-Aiming Turret
 reel: 1
 logline: A team-built Raspberry Pi launcher that photographs a target, finds its center with computer vision, and works out the angle it needs to hit it.
 status: In production
-released: 2026 —
+released: 2026, ongoing
 context: Class project · Team build
 genres: [Robotics, Linux, CAD, Computer Vision]
 poster:
-  src: /media/turret/cad.jpg
-  alt: Onshape CAD render of the turret — a ring-gear base, stepper drive gears, and launcher housing
+  src: /media/turret/cad-render.jpg
+  alt: "3D render of the turret CAD: the launcher wheel and firing module on a large ring-gear base, with the angled Raspberry Pi mount behind"
+viewer:
+  caption: "My Onshape CAD, live. Drag to spin it or pick a part to look closer."
+  models:
+    - name: Full assembly
+      file: /media/turret/models/full-assembly.stl
+      blurb: "The complete turret: ten sub-assemblies mated together in Onshape. Everything rides on one big ring gear, so a single stepper motor can swing the whole launcher."
+    - name: Launcher
+      file: /media/turret/models/shooter-assembly-2.stl
+      blurb: "The firing module: the wheel housing, the channel that feeds the ball into the wheel, the drive motor, and its own stepper gearing."
+    - name: Launcher wheel
+      file: /media/turret/models/motor-assembly.stl
+      blurb: "A spoked wheel in its housing. The DC motor spins it up, and the ball is pinched against it and flung out. Faster wheel, farther shot."
+    - name: Ring gear base
+      file: /media/turret/models/gear-assembly.stl
+      blurb: "The 267 mm ring gear the whole turret sits on. Lots of teeth means a small gear has to walk a long way around it, which is what makes the aim fine and precise."
+      up: y
+    - name: Pan drive
+      file: /media/turret/models/stepper-base-gear.stl
+      blurb: "A stepper motor with a small pinion gear that meshes with the ring gear. Steppers move in exact steps, so the code always knows which way the turret is pointing."
+    - name: Sensor pod
+      file: /media/turret/models/sensor-enclosure-assembly.stl
+      blurb: "The enclosure for the ultrasonic range finder. Its two “eyes” send out a chirp and time the echo to measure how far away things are."
+    - name: Pi mount
+      file: /media/turret/models/raz-holder-assembly.stl
+      blurb: "The angled stand that holds the Raspberry Pi (the turret's brain) on the base."
 team:
-  # TODO: replace "Teammate" with real names (and an optional href link) once Robert sends them.
+  # Other team members: still pending from Robert.
   - { name: Robert Zamora, role: "CAD design · Raspberry Pi & Linux · Bash tooling", me: true }
-  - { name: Teammate, role: "Python — vision, motors & physics" }
+  - { name: Ibrokhim Bakirov, role: "Python: OpenCV vision & physics calculations", href: "https://github.com/ibrokhimcoder" }
 credits:
   - { role: Brain, value: Raspberry Pi (headless Linux) }
   - { role: Eyes, value: Pi Camera · OpenCV }
@@ -22,7 +47,6 @@ credits:
   - { role: Screenplay, value: Python · Bash }
 ---
 
-import CadHotspots from '../../components/turret/CadHotspots.astro';
 import BoothTerminal from '../../components/turret/BoothTerminal.astro';
 import TargetFinder from '../../components/turret/TargetFinder.astro';
 import TrajectorySim from '../../components/turret/TrajectorySim.astro';
@@ -31,17 +55,17 @@ import TrajectorySim from '../../components/turret/TrajectorySim.astro';
 
 Point a camera at a dartboard and the turret should do the rest: find the bullseye, turn to face it, tilt to the right angle, and fire. We built it as a team for a class, and it's still being built.
 
-The work split cleanly. **My teammate wrote the Python** — the computer vision, the motor control, and the physics. **I designed the turret in CAD and ran the Raspberry Pi**: setting up its Linux system, keeping it running, and writing the Bash tools the whole team used to get code onto it and run it.
+The work split cleanly. **My teammate [Ibrokhim Bakirov](https://github.com/ibrokhimcoder) wrote the Python**: the OpenCV vision code and the physics calculations. **I designed the turret in CAD and ran the Raspberry Pi**: setting up its Linux system, keeping it running, and writing the Bash tools the whole team used to get code onto it and run it.
 
-## The set — designing it in CAD
+## The set: designing it in CAD
 
-I modeled every part in Onshape as its own sub-assembly — the gear train, the Pi holder, the sensor enclosure, the motor mounts — and mated them into the full build. The key idea is the base: the whole launcher sits on one large ring gear, so a single stepper motor can swing the entire turret.
+I modeled every part in Onshape as its own sub-assembly (the gear train, the Pi holder, the sensor enclosure, the motor mounts) and mated them into the full build. The model on the screen at the top of this page is that CAD, exported straight from Onshape: spin it, zoom in, or pick a part to see it on its own. Blueprint mode shows the edges the way a drawing would.
 
-<CadHotspots />
+The key idea is the base: the whole launcher sits on one large ring gear, so a single stepper motor can swing the entire turret. Lots of teeth on the ring and few on the drive gear means each motor step turns the turret only a tiny amount, which is exactly what you want when you're aiming.
 
-## The projection booth — running a headless Pi
+## The projection booth: running a headless Pi
 
-The Pi had no monitor or keyboard — it lived inside the turret. So I set it up to be driven entirely from a laptop over the network: flashing its OS, configuring SSH key login so nobody had to type a password, and reaching it by name (`WiseProject.local`) instead of hunting for its IP address.
+The Pi had no monitor or keyboard. It lived inside the turret. So I set it up to be driven entirely from a laptop over the network: flashing its OS, configuring SSH key login so nobody had to type a password, and reaching it by name (`WiseProject.local`) instead of hunting for its IP address.
 
 Then I wrote a small set of Bash scripts so the rest of the team didn't need to know any of that. One command uploads the latest code, one runs any script on the Pi, one snaps a photo and sends it straight back to the laptop. When we re-flashed the SD card, another cleaned up the old SSH identity so we could pair again.
 
@@ -49,7 +73,7 @@ Then I wrote a small set of Bash scripts so the rest of the team didn't need to 
 
 ## How the turret sees
 
-My teammate's vision code takes a still from the Pi camera, turns it into outlines with Canny edge detection, and scores every closed shape for how round it is. The roundest shape above a threshold becomes the aim point. Here's that idea running in your browser:
+Ibrokhim's vision code takes a still from the Pi camera, turns it into outlines with Canny edge detection, and scores every closed shape for how round it is. The roundest shape above a threshold becomes the aim point. Here's that idea running in your browser:
 
 <TargetFinder />
 
@@ -65,11 +89,11 @@ if circularity > 0.85:
 
 ## Hitting the target
 
-Knowing *where* the target is isn't enough — the turret has to know *how hard it throws*. The plan is a calibration run: fire at 15°, 30°, 45°, 60° and 75°, measure each landing spot, and fit range against sin(2θ) to recover the launch speed. With the speed known, the projectile equation gives the exact barrel angle for any target.
+Knowing *where* the target is isn't enough. The turret has to know *how hard it throws*. The plan is a calibration run: fire at 15°, 30°, 45°, 60° and 75°, measure each landing spot, and fit range against sin(2θ) to recover the launch speed. With the speed known, the projectile equation gives the exact barrel angle for any target.
 
 <TrajectorySim />
 
 ## Still in the edit
 
 - **Done:** full CAD assembly, headless Pi setup and the Bash toolchain, target detection, stepper control.
-- **In progress:** the calibration run and the aiming math — connecting the camera's pixel coordinates to real-world angles is the next big step.
+- **In progress:** the calibration run and the aiming math. Connecting the camera's pixel coordinates to real-world angles is the next big step.

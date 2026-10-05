@@ -6,6 +6,7 @@ import Stage from '../../components/Stage.astro';
 import Leader from '../../components/Leader.astro';
 import Intertitle from '../../components/Intertitle.astro';
 import FilmStrip from '../../components/FilmStrip.astro';
+import ModelViewer from '../../components/ModelViewer.astro';
 
 export async function getStaticPaths() {
   const features = (await getCollection('features')).sort((a, b) => a.data.reel - b.data.reel);
@@ -19,7 +20,7 @@ const { feature, next } = Astro.props;
 const { Content } = await render(feature);
 const d = feature.data;
 const pad = (n: number) => String(n).padStart(2, '0');
-const trailerIsVideo = d.trailer && /\.(mp4|webm|mov)$/i.test(d.trailer.src);
+const trailerIsVideo = !d.viewer && d.trailer && /\.(mp4|webm|mov)$/i.test(d.trailer.src);
 ---
 
 <Base title={d.title} description={d.logline}>
@@ -44,7 +45,12 @@ const trailerIsVideo = d.trailer && /\.(mp4|webm|mov)$/i.test(d.trailer.src);
       <div class="curtain">
         <div class="valance screen-valance" aria-hidden="true" />
         {
-          d.trailer ? (
+          d.viewer ? (
+            <div class="frame">
+              <ModelViewer models={d.viewer.models} />
+              <Leader />
+            </div>
+          ) : d.trailer ? (
             <div class="frame">
               <Media src={d.trailer.src} alt={d.trailer.alt} poster={d.trailer.poster} eager />
               <Leader />
@@ -52,16 +58,18 @@ const trailerIsVideo = d.trailer && /\.(mp4|webm|mov)$/i.test(d.trailer.src);
           ) : (
             <div class="frame">
               {d.status === 'In production' ? (
-                <Intertitle title="Build footage" sub="— now in production —" />
+                <Intertitle title="Build footage" sub="now in production" />
               ) : (
-                <Intertitle title="Trailer" sub="— coming soon to this screen —" />
+                <Intertitle title="Trailer" sub="coming soon to this screen" />
               )}
             </div>
           )
         }
       </div>
       <div class="seats" aria-hidden="true" />
-      {d.trailer?.caption && <figcaption class="eyebrow">{d.trailer.caption}</figcaption>}
+      {(d.viewer?.caption ?? d.trailer?.caption) && (
+        <figcaption class="eyebrow">{d.viewer?.caption ?? d.trailer?.caption}</figcaption>
+      )}
     </figure>
 
     <div class="wrap">
@@ -285,7 +293,8 @@ const trailerIsVideo = d.trailer && /\.(mp4|webm|mov)$/i.test(d.trailer.src);
   }
   .portrait .curtain :global(video) { width: auto; max-height: 72vh; }
   .frame { position: relative; display: flex; justify-content: center; }
-  .frame :global(.intertitle) { width: 100%; }
+  .frame :global(.intertitle), .frame :global(.viewer) { width: 100%; }
+  .frame :global(.viewer) + :global(.leader) { bottom: auto; aspect-ratio: 16 / 9; }
   .screen-valance { position: absolute; top: 0; left: 0; right: 0; height: 64px; z-index: 1; }
 
   /* a row of theater seats in front of the screen */

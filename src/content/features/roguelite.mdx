@@ -1,7 +1,7 @@
 ---
 title: Generic Roguelite
 reel: 3
-logline: A top-down action game in Java with its own engine — rooms that get harder, enemies that chase and flee, spike traps, and a shop run by a monkey where every item is a gamble.
+logline: "A top-down action game in Java with its own engine: rooms that get harder, enemies that chase and flee, spike traps, and a shop run by a monkey where every item is a gamble."
 status: Now showing
 released: 2024
 context: Class project
@@ -12,8 +12,8 @@ poster:
 trailer:
   src: /media/roguelite/gameplay.mp4
   poster: /media/roguelite/gameplay-poster.jpg
-  alt: Gameplay of Generic Roguelite — tutorial room, the shop, two fights, and the death screen
-  caption: "One full run — from the tutorial room to “You survived: 2 rooms.”"
+  alt: "Gameplay of Generic Roguelite: tutorial room, the shop, two fights, and the death screen"
+  caption: "One full run, from the tutorial room to “You survived: 2 rooms.”"
 links:
   - { label: View the source on GitHub, href: "https://github.com/Scout1212/GenericRoguelite" }
 credits:
@@ -25,7 +25,7 @@ credits:
   - { role: Score, value: Chiptune soundtrack }
 gallery:
   - { src: /media/roguelite/tutorial.jpg, alt: "The tutorial room: movement keys, shooting keys, sprint, and a warning that black squares deal damage", caption: "The tutorial room teaches the controls on the floor itself.", wide: true }
-  - { src: /media/roguelite/shop.jpg, alt: "Bongo's shop: items with prices, the player's stats, and Bongo saying “Hey, I am bongo”", caption: "Bongo's shop — chips buy items, but a “?” might be a curse.", wide: true }
+  - { src: /media/roguelite/shop.jpg, alt: "Bongo's shop: items with prices, the player's stats, and Bongo saying “Hey, I am bongo”", caption: "Bongo's shop: chips buy items, but a “?” might be a curse.", wide: true }
   - { src: /media/roguelite/fight.jpg, alt: "A fight: red enemies firing projectiles, a purple portal, and the player's health and stamina bars", caption: "Clear every enemy and the doors unlock.", wide: true }
   - { src: /media/roguelite/swarm.jpg, alt: "Late in a run: many enemies surrounding the player with projectiles flying", caption: "Each room you clear spawns more, tougher enemies.", wide: true }
   - { src: /media/roguelite/death.jpg, alt: "Death screen reading “You died” and “You survived: 2 rooms”", caption: "The score is how many rooms you survive.", wide: true }
@@ -42,27 +42,27 @@ import Controls from '../../components/roguelite/Controls.astro';
 
 ## Synopsis
 
-No Unity, no game library — just Java and a blank window. I wrote the game loop, drawing, collision, sound, and room system myself, which is a lot of what a game engine normally does for you.
+No Unity, no game library. Just Java and a blank window. I wrote the game loop, drawing, collision, sound, and room system myself, which is a lot of what a game engine normally does for you.
 
-Each run is a gauntlet. Clear a room and the doors unlock; walk through a hallway and the next room is waiting with more enemies than the last. Between fights you can step into Bongo's shop and spend the chips you've collected — if you're willing to gamble. Your score is simply how many rooms you survive.
+Each run is a gauntlet. Clear a room and the doors unlock; walk through a hallway and the next room is waiting with more enemies than the last. Between fights you can step into Bongo's shop and spend the chips you've collected, if you're willing to gamble. Your score is simply how many rooms you survive.
 
 <Controls />
 
 ## Behind the scenes
 
-The whole game runs on one loop, sixty times a second, in a fixed order: read the keyboard, move the player, let every enemy act, check every collision, update the room, and redraw. Each kind of thing in the world is its own class — the player, enemies, both kinds of projectiles, the shopkeeper, doors, items, and traps — so adding a new enemy or item didn't mean touching the rest of the game.
+The whole game runs on one loop, sixty times a second, in a fixed order: read the keyboard, move the player, let every enemy act, check every collision, update the room, and redraw. Each kind of thing in the world is its own class (the player, enemies, both kinds of projectiles, the shopkeeper, doors, items, and traps), so adding a new enemy or item didn't mean touching the rest of the game.
 
 Some of the systems I built:
 
-- **Rising difficulty** — every room you clear spawns more enemies, and each one gets about 10% more health, speed, and fire rate than the last batch.
+- **Rising difficulty**: every room you clear spawns more enemies, and each one gets about 10% more health, speed, and fire rate than the last batch.
 - **Doors that lock** until the room is empty, so you can't run past a fight.
-- **Stamina** — sprinting drains a bar; walking lets it refill.
-- **A shop of gambles** — eleven items, each a buff or a curse. Some are hidden behind a “?”, so that “mystery item” might turn out to be *Lead Boots* or *Bongo's Crippled Scope*.
-- **Sound** — background music that switches with the room, plus effects for footsteps, doors, purchases, and portals.
+- **Stamina**: sprinting drains a bar; walking lets it refill.
+- **A shop of gambles**: eleven items, each a buff or a curse. Some are hidden behind a “?”, so that “mystery item” might turn out to be *Lead Boots* or *Bongo's Crippled Scope*.
+- **Sound**: background music that switches with the room, plus effects for footsteps, doors, purchases, and portals.
 
 ## Enemies with nerves
 
-The enemy AI is small but has personality. Enemies close in until they're within range, then hold their distance and fire. But a few spawn scared — and *any* enemy that drops below 3 health panics, turns around, and runs for the walls instead of shooting:
+The enemy AI is small but has personality. Enemies close in until they're within range, then hold their distance and fire. But a few spawn scared, and *any* enemy that drops below 3 health panics, turns around, and runs for the walls instead of shooting:
 
 ```java
 // non scared go to player and scared enemies will run away

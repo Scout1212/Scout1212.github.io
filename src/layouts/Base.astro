@@ -7,8 +7,8 @@ interface Props {
   description?: string;
 }
 
-const { title, description = `${site.name} — ${site.tagline}. ${site.intro}` } = Astro.props;
-const fullTitle = title ? `${title} · ${site.name}` : `${site.name} — Now Showing`;
+const { title, description = `${site.name}: ${site.tagline}. ${site.intro}` } = Astro.props;
+const fullTitle = title ? `${title} · ${site.name}` : `${site.name} · Now Showing`;
 ---
 
 <!doctype html>
@@ -48,7 +48,7 @@ const fullTitle = title ? `${title} · ${site.name}` : `${site.name} — Now Sho
       <span>No refunds · No re-entry · Keep building</span>
       <p class="colophon">
         This site was built with <a href="https://claude.com/claude-code">Claude</a> (AI) and
-        <a href="https://astro.build">Astro</a> so I could spend my time on the engineering. The projects are mine —
+        <a href="https://astro.build">Astro</a> so I could spend my time on the engineering. The projects are mine, and
         team credits are listed on each page.
       </p>
     </footer>
