@@ -1,0 +1,283 @@
+---
+// A replay terminal for the Bash scripts that ran the headless Pi.
+// Script sources are the real files (copied into src/data/turret-scripts/).
+import setup from '../../data/turret-scripts/SetUpConnection.sh?raw';
+import upload from '../../data/turret-scripts/UploadCode.sh?raw';
+import run from '../../data/turret-scripts/RunRaspberry.sh?raw';
+import executor from '../../data/turret-scripts/LocalRaspberryExecutor.sh?raw';
+import camera from '../../data/turret-scripts/Camera.sh?raw';
+import cameraExec from '../../data/turret-scripts/CameraExecutor.sh?raw';
+import removeKey from '../../data/turret-scripts/RemoveOldSSHKey.sh?raw';
+
+const PI = 'wiseproject@WiseProject.local';
+
+// flow: which way data moves for the laptop ⇄ Pi diagram
+const scripts = [
+  {
+    file: 'SetUpConnection.sh',
+    title: 'Pair the laptop and Pi',
+    when: 'Once, after flashing the Pi',
+    flow: 'up',
+    source: setup,
+    replay: [
+      '$ ./SetUpConnection.sh',
+      'SSH key already exists: ~/.ssh/id_ed25519',
+      `Copying key to ${PI} ...`,
+      'Number of key(s) added: 1',
+      '# password-free SSH from now on',
+    ],
+  },
+  {
+    file: 'UploadCode.sh',
+    title: 'Ship the latest code',
+    when: 'Every time the Python changed',
+    flow: 'up',
+    source: upload,
+    replay: [
+      '$ ./UploadCode.sh',
+      `Copying Python files to ${PI}:/home/wiseproject`,
+      'Camera.py          100%  2.9KB',
+      'Mechanics.py       100%  1.6KB',
+      'Stepper.py         100%  5.3KB',
+      'Formulas.py        100%  0.7KB',
+      'Done',
+    ],
+  },
+  {
+    file: 'RunRaspberry.sh',
+    title: 'Run a script on the Pi',
+    when: 'To test motors, sensors, or the camera',
+    flow: 'both',
+    source: run + '\n# ── runs on the Pi: LocalRaspberryExecutor.sh ──\n' + executor,
+    replay: [
+      '$ ./RunRaspberry.sh',
+      'LocalRaspberryExecutor.sh   100%',
+      '-------------------GOING INTO RASPBERRY---------------------',
+      'Camera.py  Expirement.py  Formulas.py  Mechanics.py  Stepper.py',
+      'Enter file name: Stepper',
+      'File found: Stepper',
+      'Running script...',
+    ],
+  },
+  {
+    file: 'Camera.sh',
+    title: 'Snap a photo, send it back',
+    when: 'To check what the camera sees',
+    flow: 'down',
+    source: camera + '\n# ── runs on the Pi: CameraExecutor.sh ──\n' + cameraExec,
+    replay: [
+      '$ ./Camera.sh',
+      'CameraExecutor.sh   100%',
+      '-------------------GOING INTO RASPBERRY---------------------',
+      'Still capture image received',
+      '/home/wiseproject',
+      'processedImage.jpg  100%  → laptop Desktop',
+    ],
+  },
+  {
+    file: 'RemoveOldSSHKey.sh',
+    title: 'Forget the old Pi',
+    when: 'After re-flashing the SD card',
+    flow: 'none',
+    source: removeKey,
+    replay: [
+      '$ ./RemoveOldSSHKey.sh',
+      '# Host 192.168.1.151 found',
+      '~/.ssh/known_hosts updated.',
+      '# the freshly flashed Pi has a new identity — ready to pair again',
+    ],
+  },
+];
+---
+
+<figure class="exhibit booth" data-booth>
+  <div class="exhibit-head">
+    <span class="eyebrow">▶ Interactive · The projection booth</span>
+    <span class="hint">Pick a script to replay it.</span>
+  </div>
+
+  <div class="link" data-flow="none" aria-hidden="true">
+    <div class="node">
+      <svg viewBox="0 0 64 44"><rect x="10" y="4" width="44" height="28" rx="3" /><rect x="14" y="8" width="36" height="20" class="screen" /><path d="M4 36 H60 L56 40 H8 Z" /></svg>
+      <span class="eyebrow">My laptop</span>
+    </div>
+    <div class="wire">
+      <span class="pkt up"></span><span class="pkt up d2"></span>
+      <span class="pkt down"></span><span class="pkt down d2"></span>
+      <span class="eyebrow proto">SSH · SCP</span>
+    </div>
+    <div class="node">
+      <svg viewBox="0 0 64 44"><rect x="6" y="6" width="52" height="34" rx="3" class="board" /><rect x="10" y="9" width="30" height="4" class="pins" /><rect x="26" y="18" width="14" height="14" class="chip" /><rect x="46" y="12" width="10" height="8" class="port" /><rect x="46" y="24" width="10" height="8" class="port" /></svg>
+      <span class="eyebrow">Raspberry Pi</span>
+    </div>
+  </div>
+
+  <div class="tabs" role="tablist">
+    {
+      scripts.map((s, i) => (
+        <button class="tab" role="tab" data-i={i} aria-selected={i === 0 ? 'true' : 'false'}>
+          <span class="n">{i + 1}</span>
+          <span class="t">{s.title}</span>
+          <span class="w">{s.when}</span>
+        </button>
+      ))
+    }
+  </div>
+
+  <div class="term">
+    <div class="term-bar">
+      <span class="dots"><i></i><i></i><i></i></span>
+      <span class="eyebrow fname">SetUpConnection.sh</span>
+      <button class="btn view" aria-pressed="false">View script</button>
+    </div>
+    <pre class="screen-out" aria-live="polite"></pre>
+    <pre class="source" hidden></pre>
+  </div>
+
+  <figcaption class="exhibit-note">
+    A replay recreated from the real scripts — the source view shows them exactly as written. The Pi ran headless (no
+    monitor or keyboard), so everything went through these.
+  </figcaption>
+
+  <script type="application/json" data-scripts set:html={JSON.stringify(scripts)} />
+</figure>
+
+<script>
+  type Script = { file: string; flow: string; source: string; replay: string[] };
+
+  document.querySelectorAll<HTMLElement>('[data-booth]').forEach((root) => {
+    const scripts: Script[] = JSON.parse(root.querySelector('[data-scripts]')!.textContent || '[]');
+    const tabs = root.querySelectorAll<HTMLButtonElement>('.tab');
+    const out = root.querySelector<HTMLElement>('.screen-out')!;
+    const src = root.querySelector<HTMLElement>('.source')!;
+    const fname = root.querySelector<HTMLElement>('.fname')!;
+    const viewBtn = root.querySelector<HTMLButtonElement>('.view')!;
+    const link = root.querySelector<HTMLElement>('.link')!;
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let timer = 0;
+    let current = 0;
+
+    function play(i: number) {
+      current = i;
+      const s = scripts[i];
+      window.clearTimeout(timer);
+      tabs.forEach((t) => t.setAttribute('aria-selected', String(t.dataset.i === String(i))));
+      fname.textContent = s.file;
+      src.textContent = s.source.trim();
+      link.dataset.flow = 'none';
+      out.textContent = '';
+
+      if (reduce) {
+        out.textContent = s.replay.join('\n');
+        link.dataset.flow = s.flow;
+        return;
+      }
+      // type the command, then print each output line
+      const [cmd, ...rest] = s.replay;
+      let c = 0;
+      const typeCmd = () => {
+        out.textContent = cmd.slice(0, ++c);
+        if (c < cmd.length) timer = window.setTimeout(typeCmd, 28);
+        else {
+          link.dataset.flow = s.flow;
+          timer = window.setTimeout(() => printLine(0), 350);
+        }
+      };
+      const printLine = (n: number) => {
+        if (n >= rest.length) return;
+        out.textContent += '\n' + rest[n];
+        timer = window.setTimeout(() => printLine(n + 1), 260 + Math.random() * 260);
+      };
+      typeCmd();
+    }
+
+    tabs.forEach((t) => t.addEventListener('click', () => play(Number(t.dataset.i))));
+    viewBtn.addEventListener('click', () => {
+      const showing = viewBtn.getAttribute('aria-pressed') === 'true';
+      viewBtn.setAttribute('aria-pressed', String(!showing));
+      viewBtn.textContent = showing ? 'View script' : 'Show replay';
+      src.hidden = showing;
+      out.hidden = !showing;
+    });
+
+    // start the first replay when the booth scrolls into view
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        play(current);
+        io.disconnect();
+      }
+    }, { threshold: 0.4 });
+    io.observe(root);
+  });
+</script>
+
+<style>
+  /* laptop ⇄ Pi diagram */
+  .link { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+  .node { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
+  .node svg { width: 64px; height: 44px; fill: none; stroke: var(--on-house-soft); stroke-width: 1.5; }
+  .node .screen { fill: rgba(246, 199, 91, 0.15); stroke: none; }
+  .node .board { fill: #1f4a2c; stroke: #3c7a4d; }
+  .node .pins { fill: var(--brass); stroke: none; }
+  .node .chip { fill: #111; stroke: #555; }
+  .node .port { fill: #8a8f96; stroke: none; }
+  .node .eyebrow { font-size: 0.58rem; color: var(--on-house-soft); }
+  .wire { position: relative; height: 2px; background: repeating-linear-gradient(90deg, var(--house-line) 0 6px, transparent 6px 10px); }
+  .proto { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); font-size: 0.56rem; color: var(--on-house-soft); white-space: nowrap; }
+  .pkt { position: absolute; top: -4px; width: 10px; height: 10px; border-radius: 50%; opacity: 0; }
+  .pkt.up { background: var(--bulb); box-shadow: 0 0 10px var(--bulb); }
+  .pkt.down { background: #7ee0a1; box-shadow: 0 0 10px #7ee0a1; }
+  [data-flow='up'] .pkt.up, [data-flow='both'] .pkt.up { animation: to-pi 1.4s linear infinite; }
+  [data-flow='down'] .pkt.down, [data-flow='both'] .pkt.down { animation: to-laptop 1.4s linear infinite; }
+  .pkt.d2 { animation-delay: 0.7s !important; }
+  @keyframes to-pi { 0% { left: 0; opacity: 1; } 100% { left: calc(100% - 10px); opacity: 1; } }
+  @keyframes to-laptop { 0% { left: calc(100% - 10px); opacity: 1; } 100% { left: 0; opacity: 1; } }
+
+  /* script picker */
+  .tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: 0.5rem; margin-bottom: 0.9rem; }
+  .tab {
+    font: inherit;
+    display: grid;
+    gap: 0.15rem;
+    text-align: left;
+    padding: 0.6rem 0.7rem;
+    border-radius: 4px;
+    border: 1px solid var(--house-line);
+    background: #120d0c;
+    color: var(--on-house);
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .tab:hover { border-color: var(--bulb); }
+  .tab[aria-selected='true'] { border-color: var(--bulb); background: #241a12; }
+  .tab .n { font-family: var(--mono); font-size: 0.62rem; color: var(--bulb); }
+  .tab .t { font-family: var(--display); font-weight: 800; text-transform: uppercase; font-size: 1.05rem; line-height: 1.05; }
+  .tab .w { font-size: 0.78rem; font-style: italic; color: var(--on-house-soft); line-height: 1.3; }
+
+  /* the terminal */
+  .term { border-radius: 5px; overflow: hidden; background: #0b0807; box-shadow: inset 0 0 0 1px var(--house-line); }
+  .term-bar { display: flex; align-items: center; gap: 0.8rem; padding: 0.45rem 0.6rem; background: #1a1311; }
+  .dots { display: flex; gap: 0.35rem; }
+  .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--house-line); }
+  .dots i:first-child { background: var(--ticket); }
+  .fname { flex: 1; font-size: 0.62rem; color: var(--on-house-soft); }
+  .term-bar .btn { padding: 0.35em 0.7em; font-size: 0.6rem; }
+  .term pre {
+    margin: 0;
+    padding: 1rem 1.1rem;
+    min-height: 13.5rem;
+    max-height: 22rem;
+    overflow: auto;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    border: none;
+    border-radius: 0;
+  }
+  .screen-out { color: var(--bulb); text-shadow: 0 0 6px rgba(246, 199, 91, 0.35); }
+  .screen-out::after { content: '▋'; animation: blink 1s steps(1) infinite; margin-left: 2px; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .source { color: #d9cdb8; }
+</style>

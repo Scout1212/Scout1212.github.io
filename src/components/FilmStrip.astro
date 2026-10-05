@@ -1,0 +1,16 @@
+---
+// A tilted strip of film that slowly rolls by. Purely decorative.
+interface Props {
+  words: string[];
+  tilt?: 'left' | 'right';
+}
+const { words, tilt = 'left' } = Astro.props;
+// Repeat enough frames to fill wide screens, then double for a seamless loop.
+const frames = Array.from({ length: 4 }, () => words).flat();
+---
+
+<div class:list={['filmstrip', { 'tilt-right': tilt === 'right' }]} aria-hidden="true">
+  <div class="filmstrip-track">
+    {[...frames, ...frames].map((w) => <span>{w}</span>)}
+  </div>
+</div>

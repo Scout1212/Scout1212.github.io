@@ -1,0 +1,59 @@
+---
+// "How to play" panel: the game's real controls, drawn as keycaps.
+const groups = [
+  { label: 'Move', keys: [['', 'W', ''], ['A', 'S', 'D']] },
+  { label: 'Shoot', keys: [['', 'I', ''], ['J', 'K', 'L']] },
+];
+---
+
+<figure class="exhibit controls-card">
+  <div class="exhibit-head">
+    <span class="eyebrow">▶ How to play</span>
+    <span class="hint">Straight from the in-game tutorial room.</span>
+  </div>
+  <div class="pads">
+    {
+      groups.map((g) => (
+        <div class="pad">
+          <div class="keys">
+            {g.keys.map((row) => (
+              <div class="row">
+                {row.map((k) => (k ? <kbd>{k}</kbd> : <span class="gap" />))}
+              </div>
+            ))}
+          </div>
+          <span class="eyebrow">{g.label}</span>
+        </div>
+      ))
+    }
+    <div class="pad">
+      <div class="keys"><div class="row"><kbd class="wide">Shift</kbd></div></div>
+      <span class="eyebrow">Sprint (drains stamina)</span>
+    </div>
+    <div class="pad">
+      <div class="keys"><div class="row"><span class="trap" /></div></div>
+      <span class="eyebrow">Black square = spikes</span>
+    </div>
+  </div>
+</figure>
+
+<style>
+  .pads { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 1.25rem; align-items: end; }
+  .pad { display: flex; flex-direction: column; align-items: center; gap: 0.7rem; }
+  .pad .eyebrow { font-size: 0.6rem; color: var(--on-house-soft); text-align: center; }
+  .keys { display: grid; gap: 4px; }
+  .row { display: flex; gap: 4px; justify-content: center; }
+  kbd, .gap, .trap { width: 2.4rem; height: 2.4rem; }
+  kbd {
+    display: grid;
+    place-items: center;
+    border-radius: 5px;
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: #1a1208;
+    background: linear-gradient(#fbf3df, #e3d0aa);
+    box-shadow: 0 3px 0 #8a6624, 0 4px 8px rgba(0, 0, 0, 0.5);
+  }
+  kbd.wide { width: 6rem; }
+  .trap { background: #000; border: 1px solid var(--house-line); }
+</style>

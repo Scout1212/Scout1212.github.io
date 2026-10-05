@@ -1,0 +1,19 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="Lost reel">
+  <main class="wrap lost">
+    <p class="eyebrow">Error 404</p>
+    <h1 class="display">This reel is missing</h1>
+    <p>The page you're looking for isn't on tonight's program.</p>
+    <a class="eyebrow" href="/">← Back to the lobby</a>
+  </main>
+</Base>
+
+<style>
+  .lost { text-align: center; padding-top: 18vh; padding-bottom: 18vh; }
+  .lost .eyebrow { color: var(--bulb); }
+  h1 { font-size: clamp(3rem, 10vw, 6rem); margin: 1rem 0; }
+  p:not(.eyebrow) { color: var(--on-house-soft); font-style: italic; font-size: 1.3rem; }
+</style>

@@ -1,0 +1,258 @@
+---
+// Side-view projectile simulator: set launch speed and angle, drag the target,
+// or let it solve for the angle (low arc or high arc).
+---
+
+<figure class="exhibit traj" data-traj>
+  <div class="exhibit-head">
+    <span class="eyebrow">▶ Interactive · Hitting the target</span>
+    <span class="hint">Drag the dartboard, then fire — or let it solve the angle.</span>
+  </div>
+
+  <canvas width="1280" height="640" aria-label="Side view of the turret firing a ball at a target"></canvas>
+
+  <div class="controls">
+    <label class="control">
+      <span>Launch speed <output data-out="v">7.5 m/s</output></span>
+      <input type="range" min="3" max="10" step="0.1" value="7.5" data-in="v" />
+    </label>
+    <label class="control">
+      <span>Barrel angle <output data-out="angle">35°</output></span>
+      <input type="range" min="5" max="80" step="0.5" value="35" data-in="angle" />
+    </label>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn primary" data-act="fire">Fire</button>
+    <button class="btn" data-act="low">Solve: low arc</button>
+    <button class="btn" data-act="high">Solve: high arc</button>
+  </div>
+
+  <p class="readout" aria-live="polite"></p>
+  <figcaption class="exhibit-note">
+    Solving for the angle uses tan θ = (v² ± √(v⁴ − g(g·x² + 2·y·v²))) ÷ (g·x). There are usually two answers — a flat,
+    fast shot and a high lob. Ignores air resistance, like the first version of our math.
+  </figcaption>
+</figure>
+
+<script>
+  const W = 640;
+  const H = 320;
+  const G = 9.81;
+  const M = 95; // pixels per metre
+  const ORIGIN = { x: 48, y: H - 34 }; // ground level at the turret
+  const BARREL_H = 0.2; // launch height, m
+
+  const toPx = (x: number, y: number) => ({ x: ORIGIN.x + x * M, y: ORIGIN.y - y * M });
+
+  document.querySelectorAll<HTMLElement>('[data-traj]').forEach((root) => {
+    const canvas = root.querySelector('canvas')!;
+    const ctx = canvas.getContext('2d')!;
+    ctx.scale(canvas.width / W, canvas.height / H);
+    const vIn = root.querySelector<HTMLInputElement>('[data-in="v"]')!;
+    const aIn = root.querySelector<HTMLInputElement>('[data-in="angle"]')!;
+    const vOut = root.querySelector<HTMLOutputElement>('[data-out="v"]')!;
+    const aOut = root.querySelector<HTMLOutputElement>('[data-out="angle"]')!;
+    const readout = root.querySelector<HTMLElement>('.readout')!;
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const target = { x: 3.4, y: 0.8, r: 0.16 }; // metres
+    let flight: { pts: { x: number; y: number }[]; hit: boolean } | null = null;
+    let ballIndex = -1;
+    let anim = 0;
+
+    function simulate(v: number, deg: number) {
+      const th = (deg * Math.PI) / 180;
+      const vx = v * Math.cos(th);
+      const vy = v * Math.sin(th);
+      const pts: { x: number; y: number }[] = [];
+      let hit = false;
+      for (let t = 0; t < 4; t += 0.01) {
+        const x = vx * t;
+        const y = BARREL_H + vy * t - 0.5 * G * t * t;
+        pts.push({ x, y });
+        if (Math.hypot(x - target.x, y - target.y) < target.r) { hit = true; break; }
+        if (y < 0 || x > (W - ORIGIN.x) / M) break;
+      }
+      return { pts, hit };
+    }
+
+    function solve(high: boolean) {
+      const v = Number(vIn.value);
+      const x = target.x;
+      const y = target.y - BARREL_H;
+      const disc = v ** 4 - G * (G * x * x + 2 * y * v * v);
+      if (disc < 0) return null;
+      const root = Math.sqrt(disc);
+      const th = Math.atan((v * v + (high ? root : -root)) / (G * x));
+      return (th * 180) / Math.PI;
+    }
+
+    function drawScene() {
+      // night sky / house
+      const sky = ctx.createLinearGradient(0, 0, 0, H);
+      sky.addColorStop(0, '#16100f');
+      sky.addColorStop(1, '#241a17');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, H);
+
+      // ground + distance markers
+      ctx.fillStyle = '#0d0908';
+      ctx.fillRect(0, ORIGIN.y, W, H - ORIGIN.y);
+      ctx.fillStyle = '#a8998a';
+      ctx.font = '11px "IBM Plex Mono", monospace';
+      ctx.textAlign = 'center';
+      for (let m = 1; m <= 6; m++) {
+        const p = toPx(m, 0);
+        ctx.fillRect(p.x - 0.5, ORIGIN.y, 1, 6);
+        ctx.fillText(`${m} m`, p.x, ORIGIN.y + 20);
+      }
+
+      // turret
+      const deg = Number(aIn.value);
+      const th = (deg * Math.PI) / 180;
+      const pivot = toPx(0, BARREL_H);
+      ctx.fillStyle = '#3a2d2a';
+      ctx.beginPath();
+      ctx.ellipse(pivot.x, ORIGIN.y, 26, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#6b5b52';
+      ctx.fillRect(pivot.x - 12, pivot.y, 24, ORIGIN.y - pivot.y);
+      ctx.save();
+      ctx.translate(pivot.x, pivot.y);
+      ctx.rotate(-th);
+      ctx.fillStyle = '#c9a24a';
+      ctx.fillRect(0, -5, 34, 10);
+      ctx.restore();
+      ctx.fillStyle = '#d4402e';
+      ctx.beginPath();
+      ctx.arc(pivot.x, pivot.y, 9, 0, Math.PI * 2);
+      ctx.fill();
+
+      // target on a stand
+      const t = toPx(target.x, target.y);
+      ctx.strokeStyle = '#6b5b52';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(t.x, t.y);
+      ctx.lineTo(t.x, ORIGIN.y);
+      ctx.stroke();
+      const rings = ['#1b1b1b', '#e9dcc4', '#1b1b1b', '#2f7d4a', '#d4402e'];
+      rings.forEach((c, i) => {
+        ctx.beginPath();
+        ctx.ellipse(t.x, t.y, 6 * (1 - i * 0.12), target.r * M * (1 - i / rings.length), 0, 0, Math.PI * 2);
+        ctx.fillStyle = c;
+        ctx.fill();
+      });
+      ctx.fillStyle = '#a8998a';
+      ctx.textAlign = 'left';
+      ctx.fillText(`${target.x.toFixed(2)} m, ${target.y.toFixed(2)} m up`, t.x + 14, t.y - 14);
+    }
+
+    function draw() {
+      drawScene();
+      // predicted arc (dotted)
+      const pred = simulate(Number(vIn.value), Number(aIn.value));
+      ctx.setLineDash([3, 6]);
+      ctx.strokeStyle = 'rgba(246,199,91,0.45)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      pred.pts.forEach((p, i) => {
+        const q = toPx(p.x, p.y);
+        i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y);
+      });
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // fired shot
+      if (flight && ballIndex >= 0) {
+        ctx.strokeStyle = flight.hit ? '#38e07a' : '#f6c75b';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        flight.pts.slice(0, ballIndex + 1).forEach((p, i) => {
+          const q = toPx(p.x, p.y);
+          i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y);
+        });
+        ctx.stroke();
+        const b = flight.pts[Math.min(ballIndex, flight.pts.length - 1)];
+        const q = toPx(b.x, b.y);
+        ctx.fillStyle = '#f3eada';
+        ctx.beginPath();
+        ctx.arc(q.x, q.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      vOut.textContent = `${Number(vIn.value).toFixed(1)} m/s`;
+      aOut.textContent = `${Number(aIn.value).toFixed(1)}°`;
+    }
+
+    function fire() {
+      cancelAnimationFrame(anim);
+      flight = simulate(Number(vIn.value), Number(aIn.value));
+      const done = () => {
+        readout.innerHTML = flight!.hit
+          ? `<span class="ok">Bullseye.</span> ${Number(aIn.value).toFixed(1)}° at ${Number(vIn.value).toFixed(1)} m/s.`
+          : `<span class="bad">Miss.</span> Adjust the angle — or let it solve the angle for you.`;
+      };
+      if (reduce) {
+        ballIndex = flight.pts.length - 1;
+        draw();
+        return done();
+      }
+      ballIndex = 0;
+      const step = () => {
+        ballIndex += 2;
+        draw();
+        if (ballIndex < flight!.pts.length - 1) anim = requestAnimationFrame(step);
+        else done();
+      };
+      step();
+    }
+
+    function useSolution(high: boolean) {
+      const deg = solve(high);
+      if (deg === null || deg < 5 || deg > 80) {
+        flight = null;
+        readout.innerHTML = `<span class="bad">Out of range.</span> At ${Number(vIn.value).toFixed(1)} m/s no angle reaches it — add speed.`;
+        draw();
+        return;
+      }
+      aIn.value = String(Math.round(deg * 2) / 2);
+      readout.innerHTML = `Solved: <b>${deg.toFixed(1)}°</b> (${high ? 'high lob' : 'flat shot'}). Firing…`;
+      fire();
+    }
+
+    // drag the target
+    let dragging = false;
+    const toWorld = (e: PointerEvent) => {
+      const r = canvas.getBoundingClientRect();
+      const px = ((e.clientX - r.left) / r.width) * W;
+      const py = ((e.clientY - r.top) / r.height) * H;
+      return { x: (px - ORIGIN.x) / M, y: (ORIGIN.y - py) / M };
+    };
+    canvas.addEventListener('pointerdown', (e) => {
+      const p = toWorld(e);
+      if (Math.abs(p.x - target.x) < 0.35 && Math.abs(p.y - target.y) < 0.45) {
+        dragging = true;
+        canvas.setPointerCapture(e.pointerId);
+      }
+    });
+    canvas.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const p = toWorld(e);
+      target.x = Math.max(1, Math.min(5.9, p.x));
+      target.y = Math.max(0.2, Math.min(2.6, p.y));
+      flight = null;
+      draw();
+    });
+    const end = () => (dragging = false);
+    canvas.addEventListener('pointerup', end);
+    canvas.addEventListener('pointercancel', end);
+
+    [vIn, aIn].forEach((i) => i.addEventListener('input', () => { flight = null; readout.textContent = ''; draw(); }));
+    root.querySelector('[data-act="fire"]')!.addEventListener('click', fire);
+    root.querySelector('[data-act="low"]')!.addEventListener('click', () => useSolution(false));
+    root.querySelector('[data-act="high"]')!.addEventListener('click', () => useSolution(true));
+    document.fonts?.ready.then(draw);
+    draw();
+  });
+</script>

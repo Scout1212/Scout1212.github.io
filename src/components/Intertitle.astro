@@ -1,0 +1,64 @@
+---
+// A silent-film title card, shown on the screen when there's no footage yet.
+interface Props {
+  kicker?: string;
+  title: string;
+  sub?: string;
+}
+const { kicker = 'Coming attractions', title, sub } = Astro.props;
+---
+
+<div class="intertitle">
+  <div class="frame">
+    <span class="flourish" aria-hidden="true">❦</span>
+    <p class="kicker">{kicker}</p>
+    <p class="title">{title}</p>
+    {sub && <p class="sub">{sub}</p>}
+    <span class="flourish flip" aria-hidden="true">❦</span>
+  </div>
+</div>
+
+<style>
+  .intertitle {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    display: grid;
+    place-items: center;
+    padding: clamp(1rem, 4vw, 2.5rem);
+    background: radial-gradient(ellipse at center, #1b1715 0%, #070605 80%);
+    border-radius: 2px;
+    color: #efe6d6;
+    text-align: center;
+    animation: flicker 4s infinite;
+    box-shadow: 0 0 60px rgba(246, 199, 91, 0.15);
+  }
+  .frame {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border: 3px double rgba(239, 230, 214, 0.7);
+    outline: 1px solid rgba(239, 230, 214, 0.35);
+    outline-offset: 6px;
+  }
+  .flourish { font-size: clamp(1.2rem, 3vw, 1.8rem); color: var(--bulb); }
+  .flourish.flip { transform: rotate(180deg); }
+  .kicker {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: clamp(0.6rem, 1.6vw, 0.75rem);
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--bulb);
+  }
+  .title { margin: 0; font-family: var(--serif); font-style: italic; font-size: clamp(1.6rem, 5vw, 3rem); line-height: 1.1; }
+  .sub { margin: 0; font-family: var(--serif); font-size: clamp(0.9rem, 2vw, 1.15rem); color: #b8ab98; }
+  @keyframes flicker {
+    0%, 96%, 100% { filter: brightness(1); }
+    97% { filter: brightness(0.8); }
+    98% { filter: brightness(1.08); }
+  }
+</style>

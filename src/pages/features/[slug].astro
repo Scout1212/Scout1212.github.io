@@ -1,0 +1,523 @@
+---
+import { getCollection, render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import Media from '../../components/Media.astro';
+import Stage from '../../components/Stage.astro';
+import Leader from '../../components/Leader.astro';
+import Intertitle from '../../components/Intertitle.astro';
+import FilmStrip from '../../components/FilmStrip.astro';
+
+export async function getStaticPaths() {
+  const features = (await getCollection('features')).sort((a, b) => a.data.reel - b.data.reel);
+  return features.map((feature, i) => ({
+    params: { slug: feature.id },
+    props: { feature, next: features[(i + 1) % features.length] },
+  }));
+}
+
+const { feature, next } = Astro.props;
+const { Content } = await render(feature);
+const d = feature.data;
+const pad = (n: number) => String(n).padStart(2, '0');
+const trailerIsVideo = d.trailer && /\.(mp4|webm|mov)$/i.test(d.trailer.src);
+---
+
+<Base title={d.title} description={d.logline}>
+  <main>
+    <Stage opening={false}>
+      <header class="wrap lobby">
+        <a class="eyebrow back" href="/#program">← Back to the program</a>
+        <div class="sign">
+          <span class="sign-bulbs" aria-hidden="true"></span>
+          <p class="eyebrow kicker">
+            <span>Reel {pad(d.reel)}</span>
+            <span class:list={['chip', { live: d.status === 'In production' }]}>{d.status}</span>
+            <span>{d.released}</span>
+          </p>
+        </div>
+        <h1 class="display title">{d.title}</h1>
+        <p class="logline">{d.logline}</p>
+      </header>
+    </Stage>
+
+    <figure class:list={['wrap screen', { portrait: trailerIsVideo }]}>
+      <div class="curtain">
+        <div class="valance screen-valance" aria-hidden="true" />
+        {
+          d.trailer ? (
+            <div class="frame">
+              <Media src={d.trailer.src} alt={d.trailer.alt} poster={d.trailer.poster} eager />
+              <Leader />
+            </div>
+          ) : (
+            <div class="frame">
+              {d.status === 'In production' ? (
+                <Intertitle title="Build footage" sub="— now in production —" />
+              ) : (
+                <Intertitle title="Trailer" sub="— coming soon to this screen —" />
+              )}
+            </div>
+          )
+        }
+      </div>
+      <div class="seats" aria-hidden="true" />
+      {d.trailer?.caption && <figcaption class="eyebrow">{d.trailer.caption}</figcaption>}
+    </figure>
+
+    <div class="wrap">
+      <article class="paper sheet">
+        <div class="prose">
+          <Content />
+        </div>
+
+        <aside class="side">
+          <section class="credits">
+            <svg class="reel-icon" viewBox="0 0 48 48" aria-hidden="true">
+              <circle cx="24" cy="24" r="21" />
+              <circle cx="24" cy="24" r="4" />
+              {[0, 72, 144, 216, 288].map((a) => (
+                <circle cx={24 + 11 * Math.cos((a * Math.PI) / 180)} cy={24 + 11 * Math.sin((a * Math.PI) / 180)} r="5" />
+              ))}
+            </svg>
+            <h2 class="eyebrow ornament">Credits</h2>
+            {d.context && <p class="context eyebrow">{d.context}</p>}
+            <dl>
+              {
+                d.team.length > 0 ? (
+                  <div class="team">
+                    <dt>A team production</dt>
+                    {d.team.map((t) => (
+                      <dd class:list={{ me: t.me }}>
+                        {t.href ? <a href={t.href}>{t.name}</a> : t.name}
+                        <small>{t.role}</small>
+                      </dd>
+                    ))}
+                  </div>
+                ) : (
+                  <div>
+                    <dt>Directed by</dt>
+                    <dd>Robert Zamora</dd>
+                  </div>
+                )
+              }
+              {
+                d.credits.map((c) => (
+                  <div>
+                    <dt>{c.role}</dt>
+                    <dd>{c.value}</dd>
+                  </div>
+                ))
+              }
+            </dl>
+            {
+              d.links.length > 0 && (
+                <ul class="links">
+                  {d.links.map((l) => (
+                    <li>
+                      <a href={l.href}>{l.label} →</a>
+                    </li>
+                  ))}
+                </ul>
+              )
+            }
+          </section>
+
+          {
+            d.soundtrack && (
+              <section class="soundtrack">
+                <h2 class="eyebrow ornament">Original score</h2>
+                <p class="track display">{d.soundtrack.title}</p>
+                <audio controls preload="none" src={d.soundtrack.src} />
+              </section>
+            )
+          }
+
+          {
+            d.note && (
+              <p class="note">
+                <span class="eyebrow">Archive note</span>
+                {d.note}
+              </p>
+            )
+          }
+        </aside>
+      </article>
+    </div>
+
+    <div class="strip-gap">
+      <FilmStrip words={[d.title, '★', `Reel ${pad(d.reel)}`, '★', ...d.genres]} tilt={d.reel % 2 ? 'left' : 'right'} />
+    </div>
+
+    {
+      d.cast.length > 0 && (
+        <section class="wrap cast">
+          <p class="plaque eyebrow">Starring</p>
+          <ul class="stage-floor">
+            {d.cast.map((c) => (
+              <li>
+                <img src={c.src} alt={`${c.name} sprite`} loading="lazy" />
+                <span class="display">{c.name}</span>
+                <span class="eyebrow">as {c.role}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    {
+      d.gallery.length > 0 && (
+        <section class="wrap gallery">
+          <div class="case">
+            <p class="plaque eyebrow">Lobby cards</p>
+            <div class="cards">
+            {d.gallery.map((g) => (
+              <figure class:list={['card', { wide: g.wide }]}>
+                <Media src={g.src} alt={g.alt} poster={g.poster} />
+                {g.caption && <figcaption>{g.caption}</figcaption>}
+              </figure>
+            ))}
+            </div>
+          </div>
+        </section>
+      )
+    }
+
+    {
+      next.id !== feature.id && (
+        <nav class="wrap next">
+          <a class="next-sign" href={`/features/${next.id}/`}>
+            <span class="next-bulbs" aria-hidden="true"></span>
+            <span class="next-panel">
+              <span class="eyebrow">Coming up next · Reel {pad(next.data.reel)}</span>
+              <span class="display">{next.data.title}</span>
+              <span class="eyebrow go">Get tickets →</span>
+            </span>
+          </a>
+        </nav>
+      )
+    }
+  </main>
+</Base>
+
+<style>
+  /* ---------- lobby header, on stage ---------- */
+  .lobby {
+    text-align: center;
+    padding-top: clamp(0.5rem, 2vw, 1.5rem);
+    padding-bottom: clamp(2.5rem, 6vw, 4rem);
+    padding-left: max(var(--gutter), calc(clamp(70px, 13vw, 190px) * 0.8));
+    padding-right: max(var(--gutter), calc(clamp(70px, 13vw, 190px) * 0.8));
+  }
+  .back { display: table; margin: 0 auto; text-decoration: none; color: var(--on-house-soft); font-size: 0.68rem; }
+  .back:hover { color: var(--bulb); }
+
+  /* a small bulb-lit sign holding the reel / status line */
+  .sign {
+    position: relative;
+    display: inline-block;
+    margin: 2rem 0 1.4rem;
+    padding: 14px;
+    border-radius: 4px;
+    background: #1a1211;
+    box-shadow: 0 0 0 1px #3d2c27, 0 12px 40px -12px rgba(246, 199, 91, 0.35);
+  }
+  .sign-bulbs {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle, #fff6d6 0 1.5px, var(--bulb) 2.5px, rgba(246, 199, 91, 0.25) 3.5px, transparent 5.5px) 0 0 / 14px 14px round;
+    animation: sign-glow 2.6s ease-in-out infinite;
+  }
+  @keyframes sign-glow { 50% { filter: brightness(0.65); } }
+  .kicker {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem 0.9rem;
+    margin: 0;
+    padding: 0.55rem 1rem;
+    border-radius: 2px;
+    background: #0d0908;
+    color: var(--bulb);
+    font-size: 0.7rem;
+  }
+  .kicker .chip:not(.live) { color: var(--on-house-soft); }
+  .title {
+    margin: 0 auto;
+    font-size: clamp(3rem, 10vw, 7rem);
+    max-width: 14ch;
+    text-shadow: 0 0 40px rgba(246, 199, 91, 0.25);
+  }
+  .logline {
+    margin: 1.25rem auto 0;
+    max-width: 44ch;
+    font-size: clamp(1.2rem, 2.5vw, 1.5rem);
+    font-style: italic;
+    color: var(--on-house-soft);
+  }
+  @media (max-width: 720px) {
+    .lobby { padding-left: 34px; padding-right: 34px; }
+  }
+
+  /* ---------- the screen ---------- */
+  .screen { margin: clamp(1rem, 3vw, 2rem) auto clamp(2.5rem, 6vw, 4rem); }
+  .curtain {
+    position: relative;
+    overflow: hidden;
+    padding: calc(clamp(0.75rem, 3vw, 2rem) + 58px) clamp(2rem, 7vw, 5rem) clamp(2.5rem, 5vw, 3.5rem);
+    border-radius: 4px;
+    background:
+      linear-gradient(90deg, transparent 0 7%, rgba(0, 0, 0, 0.75) 9%, #0d0909 12%, #0d0909 88%, rgba(0, 0, 0, 0.75) 91%, transparent 93%),
+      linear-gradient(rgba(0, 0, 0, 0.1), transparent 50%, rgba(0, 0, 0, 0.55)),
+      var(--pleats);
+    box-shadow: inset 0 -30px 60px rgba(0, 0, 0, 0.5);
+  }
+  .curtain :global(img),
+  .curtain :global(video) {
+    width: 100%;
+    margin: 0 auto;
+    border-radius: 2px;
+    box-shadow: 0 0 60px rgba(246, 199, 91, 0.15);
+    background: #000;
+  }
+  .portrait .curtain :global(video) { width: auto; max-height: 72vh; }
+  .frame { position: relative; display: flex; justify-content: center; }
+  .frame :global(.intertitle) { width: 100%; }
+  .screen-valance { position: absolute; top: 0; left: 0; right: 0; height: 64px; z-index: 1; }
+
+  /* a row of theater seats in front of the screen */
+  .seats {
+    position: relative;
+    z-index: 2;
+    height: 46px;
+    margin: -34px clamp(0.5rem, 3vw, 2rem) 0;
+    background:
+      radial-gradient(ellipse 21px 26px at 50% 100%, #0a0605 97%, transparent 100%) 0 100% / 50px 40px repeat-x,
+      radial-gradient(ellipse 21px 26px at 50% 100%, #1d1210 97%, transparent 100%) 25px 0 / 50px 34px repeat-x;
+    filter: drop-shadow(0 -2px 0 rgba(168, 51, 58, 0.25));
+  }
+  .screen figcaption { margin-top: 1.2rem; text-align: center; color: var(--on-house-soft); font-size: 0.68rem; line-height: 1.7; }
+
+  /* ---------- program sheet ---------- */
+  .sheet {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 17rem;
+    gap: 3rem;
+    padding: clamp(1.75rem, 5vw, 3.5rem) clamp(1rem, 5vw, 3.5rem);
+  }
+  .sheet :global(pre) { background: var(--house) !important; }
+
+  /* number each section like scenes in a screenplay */
+  .prose { counter-reset: scene; }
+  .prose :global(h2) { counter-increment: scene; }
+  .prose :global(h2)::before {
+    content: 'Scene ' counter(scene, decimal-leading-zero);
+    display: block;
+    margin-bottom: 0.45rem;
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    font-weight: 500;
+    letter-spacing: 0.24em;
+    color: var(--ticket);
+  }
+
+  .reel-icon {
+    display: block;
+    width: 44px;
+    height: 44px;
+    margin: 0 auto 0.6rem;
+    fill: none;
+    stroke: var(--ink-soft);
+    stroke-width: 1.6;
+    animation: spin 14s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .side { display: flex; flex-direction: column; gap: 2.25rem; }
+  .credits, .soundtrack { position: relative; }
+  .side h2 { margin: 0 0 1.25rem; font-size: 0.68rem; font-weight: 500; }
+  dl { margin: 0; display: grid; gap: 0.9rem; text-align: center; }
+  dt { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-soft); }
+  dd { margin: 0.15rem 0 0; font-family: var(--display); font-weight: 600; font-size: 1.25rem; text-transform: uppercase; line-height: 1.1; }
+  .context { text-align: center; margin: -0.5rem 0 1.25rem; font-size: 0.62rem; color: var(--ticket); }
+  .team { display: grid; gap: 0.7rem; padding-bottom: 1rem; border-bottom: 1px dashed var(--rule); }
+  .team dd small {
+    display: block;
+    margin-top: 0.25rem;
+    font-family: var(--serif);
+    font-size: 0.9rem;
+    font-weight: 400;
+    text-transform: none;
+    font-style: italic;
+    color: var(--ink-soft);
+  }
+  .team dd.me { color: var(--ticket); }
+  .team a { color: inherit; }
+  .links { list-style: none; padding: 0; margin: 1.5rem 0 0; text-align: center; font-family: var(--mono); font-size: 0.8rem; }
+  .links a { color: var(--ticket); }
+  .track { text-align: center; font-size: 1.4rem; margin: 0 0 0.75rem; }
+  audio { width: 100%; }
+  .note {
+    margin: 0;
+    padding: 1rem;
+    font-size: 0.95rem;
+    font-style: italic;
+    color: var(--ink-soft);
+    border: 1px dashed var(--rule);
+  }
+  .note .eyebrow { display: block; font-style: normal; font-size: 0.6rem; color: var(--ticket); margin-bottom: 0.4rem; }
+
+  @media (max-width: 1060px) {
+    .sheet { grid-template-columns: minmax(0, 1fr); gap: 2.5rem; }
+    .side {
+      order: -1;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+      align-items: start;
+      gap: 2rem 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px dashed var(--rule);
+    }
+    .prose { max-width: none; }
+    .prose > :global(p), .prose > :global(ul), .prose > :global(h2) { max-width: 66ch; }
+  }
+
+  /* ---------- after the program ---------- */
+  .strip-gap { padding-top: clamp(3rem, 7vw, 5rem); }
+  .cast, .gallery { padding-top: clamp(3rem, 7vw, 5rem); }
+
+  /* brass name plate */
+  .plaque {
+    display: table;
+    margin: 0 auto 1.75rem;
+    padding: 0.55rem 1.4rem;
+    border-radius: 3px;
+    color: #2a1d0a;
+    font-weight: 500;
+    background: linear-gradient(180deg, #f3d98a, #c9a24a 55%, #8a6624);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), inset 0 -1px 0 rgba(0, 0, 0, 0.3), 0 4px 10px rgba(0, 0, 0, 0.5);
+    text-shadow: 0 1px 0 rgba(255, 240, 200, 0.6);
+  }
+
+  /* cast members each stand in their own spotlight */
+  .stage-floor {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 1.5rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: 1.5rem;
+    text-align: center;
+    background: linear-gradient(transparent 70%, rgba(107, 26, 31, 0.25) 70%, transparent);
+    border-bottom: 3px solid #2a1d1b;
+  }
+  .stage-floor li {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding-top: 1rem;
+  }
+  .stage-floor li::before {
+    content: '';
+    position: absolute;
+    inset: 0 10% 2.5rem;
+    clip-path: polygon(42% 0, 58% 0, 100% 100%, 0 100%);
+    background: linear-gradient(rgba(255, 228, 160, 0.03), rgba(255, 228, 160, 0.16));
+    pointer-events: none;
+  }
+  .stage-floor img {
+    position: relative;
+    height: 9rem;
+    width: auto;
+    image-rendering: pixelated;
+    padding: 1rem 1rem 0.4rem;
+    filter: drop-shadow(0 0 18px rgba(246, 199, 91, 0.3));
+  }
+  .stage-floor li::after {
+    content: '';
+    width: 9rem;
+    height: 1.1rem;
+    margin-top: -1.4rem;
+    border-radius: 50%;
+    background: radial-gradient(rgba(255, 228, 160, 0.4), transparent 70%);
+    order: 1;
+  }
+  .stage-floor .display { font-size: 1.6rem; order: 2; }
+  .stage-floor .eyebrow { font-size: 0.62rem; color: var(--on-house-soft); order: 3; }
+
+  /* lobby display case: brass frame, velvet backing, a sheen of glass */
+  .case {
+    position: relative;
+    padding: clamp(1.25rem, 4vw, 2.5rem);
+    border: 10px solid transparent;
+    border-radius: 6px;
+    background:
+      linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.6)) padding-box,
+      var(--pleats) padding-box,
+      linear-gradient(135deg, #f3d98a, #8a6624 35%, #e8c36a 60%, #6b4c17) border-box;
+    box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.7), 0 20px 40px -20px rgba(0, 0, 0, 0.8);
+  }
+  .case::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.07) 38%, transparent 46%);
+  }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1.5rem; }
+  .card {
+    margin: 0;
+    padding: 0.75rem 0.75rem 1rem;
+    background: var(--paper);
+    color: var(--ink);
+    border-radius: 2px;
+    transform: rotate(-0.8deg);
+    box-shadow: 0 10px 20px -8px rgba(0, 0, 0, 0.7);
+  }
+  .card:nth-child(even) { transform: rotate(0.9deg); }
+  .card :global(img), .card :global(video) { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; background: #000; }
+  .card.wide :global(img), .card.wide :global(video) { aspect-ratio: auto; object-fit: contain; }
+  .case:has(.card.wide) .cards { grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); }
+  .card figcaption { margin-top: 0.7rem; font-size: 0.95rem; line-height: 1.4; }
+
+  /* "coming up next" as a small marquee sign */
+  .next { padding-top: clamp(3.5rem, 8vw, 6rem); display: flex; justify-content: center; }
+  .next-sign {
+    position: relative;
+    display: block;
+    width: min(100%, 36rem);
+    padding: 16px;
+    border-radius: 6px;
+    text-decoration: none;
+    background: #1a1211;
+    box-shadow: 0 0 0 1px #3d2c27, 0 30px 80px -30px rgba(246, 199, 91, 0.4);
+    transition: transform 0.25s;
+  }
+  .next-sign:hover { transform: translateY(-4px); }
+  .next-bulbs {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle, #fff6d6 0 1.8px, var(--bulb) 3px, rgba(246, 199, 91, 0.25) 4px, transparent 6.5px) 0 0 / 16px 16px round;
+  }
+  .next-sign:hover .next-bulbs { animation: sign-glow 0.8s ease-in-out infinite; }
+  .next-panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1.4rem 1rem;
+    border-radius: 2px;
+    text-align: center;
+    color: #17110f;
+    background: radial-gradient(ellipse at 50% 40%, #fffaf0 0%, #f4e8cf 60%, #e3d0aa 100%);
+  }
+  .next-panel .eyebrow { font-size: 0.64rem; color: #6a5a4c; }
+  .next-panel .display { font-size: clamp(1.9rem, 6vw, 3rem); }
+  .next-panel .go { color: var(--ticket); }
+</style>

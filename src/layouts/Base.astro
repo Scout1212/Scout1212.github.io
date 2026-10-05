@@ -1,0 +1,102 @@
+---
+import '../styles/global.css';
+import { site } from '../site';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { title, description = `${site.name} — ${site.tagline}. ${site.intro}` } = Astro.props;
+const fullTitle = title ? `${title} · ${site.name}` : `${site.name} — Now Showing`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta name="theme-color" content="#120d0c" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=IBM+Plex+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap"
+    />
+  </head>
+  <body id="top">
+    <header class="wrap topbar">
+      <a href="/" class="eyebrow brand">RZ<span class="season"> · {site.season}</span></a>
+      <nav class="eyebrow">
+        <a href="/#program">Program</a>
+        <a href="/#notes" class="optional">Director's notes</a>
+        <a href="/#box-office">Box office</a>
+      </nav>
+    </header>
+    <slot />
+    <footer class="wrap site-footer eyebrow">
+      <span>© {new Date().getFullYear()} {site.name}</span>
+      <a class="exit" href="#top" aria-label="Back to top">
+        <span class="exit-word">Exit</span>
+        <span class="exit-arrow" aria-hidden="true">↑</span>
+      </a>
+      <span>No refunds · No re-entry · Keep building</span>
+      <p class="colophon">
+        This site was built with <a href="https://claude.com/claude-code">Claude</a> (AI) and
+        <a href="https://astro.build">Astro</a> so I could spend my time on the engineering. The projects are mine —
+        team credits are listed on each page.
+      </p>
+    </footer>
+  </body>
+</html>
+
+<style>
+  .site-footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.5rem 2rem;
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+    color: var(--on-house-soft);
+    font-size: 0.68rem;
+    align-items: center;
+  }
+  .colophon {
+    flex-basis: 100%;
+    margin: 0.5rem 0 0;
+    padding-top: 1rem;
+    border-top: 1px solid var(--house-line);
+    font-family: var(--serif);
+    font-size: 0.9rem;
+    font-style: italic;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--on-house-soft);
+  }
+  .colophon a { color: var(--on-house); }
+  .exit {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.8rem;
+    text-decoration: none;
+    color: var(--exit);
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 1.15rem;
+    letter-spacing: 0.12em;
+    background: #06140b;
+    border: 2px solid #1d4a2c;
+    border-radius: 3px;
+    text-shadow: 0 0 6px rgba(57, 255, 122, 0.8), 0 0 16px rgba(57, 255, 122, 0.45);
+    box-shadow: 0 0 22px rgba(57, 255, 122, 0.15), inset 0 0 12px rgba(57, 255, 122, 0.12);
+    transition: box-shadow 0.2s;
+  }
+  .exit:hover { box-shadow: 0 0 34px rgba(57, 255, 122, 0.35), inset 0 0 12px rgba(57, 255, 122, 0.2); }
+</style>

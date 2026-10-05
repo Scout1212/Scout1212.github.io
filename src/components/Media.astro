@@ -1,0 +1,20 @@
+---
+// Renders an image or a video, based on the file extension.
+interface Props {
+  src: string;
+  alt: string;
+  poster?: string;
+  class?: string;
+  eager?: boolean;
+}
+const { src, alt, poster, class: className, eager = false } = Astro.props;
+const isVideo = /\.(mp4|webm|mov)$/i.test(src);
+---
+
+{
+  isVideo ? (
+    <video class={className} src={src} poster={poster} controls playsinline preload="none" aria-label={alt} />
+  ) : (
+    <img class={className} src={src} alt={alt} loading={eager ? 'eager' : 'lazy'} decoding="async" />
+  )
+}

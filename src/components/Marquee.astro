@@ -1,0 +1,117 @@
+---
+import { site } from '../site';
+---
+
+<div class="marquee-wrap">
+<svg class="crown" viewBox="0 0 300 106" aria-hidden="true">
+  <path class="fan" d="M44 104 A106 106 0 0 1 256 104 Z" />
+  <path class="arc" d="M50 104 A100 100 0 0 1 250 104" />
+  <g class="rays">
+    <line x1="183.3" y1="96.9" x2="243.9" y2="84.0" />
+    <line x1="181.9" y1="92.4" x2="225.2" y2="76.6" />
+    <line x1="180.0" y1="88.0" x2="234.8" y2="58.9" />
+    <line x1="177.5" y1="84.0" x2="214.7" y2="57.0" />
+    <line x1="174.5" y1="80.4" x2="219.1" y2="37.3" />
+    <line x1="170.9" y1="77.2" x2="199.3" y2="41.0" />
+    <line x1="167.0" y1="74.6" x2="198.0" y2="20.9" />
+    <line x1="162.7" y1="72.5" x2="180.0" y2="29.8" />
+    <line x1="158.2" y1="71.0" x2="173.2" y2="10.9" />
+    <line x1="153.6" y1="70.2" x2="158.4" y2="24.4" />
+    <line x1="148.8" y1="70.0" x2="146.6" y2="8.1" />
+    <line x1="144.1" y1="70.5" x2="136.1" y2="25.2" />
+    <line x1="139.5" y1="71.7" x2="120.3" y2="12.7" />
+    <line x1="135.1" y1="73.4" x2="114.9" y2="32.1" />
+    <line x1="131.0" y1="75.8" x2="96.3" y2="24.4" />
+    <line x1="127.2" y1="78.7" x2="96.5" y2="44.5" />
+    <line x1="124.0" y1="82.1" x2="76.5" y2="42.3" />
+    <line x1="121.2" y1="86.0" x2="82.2" y2="61.6" />
+    <line x1="118.9" y1="90.2" x2="62.3" y2="65.0" />
+    <line x1="117.3" y1="94.6" x2="73.1" y2="81.9" />
+  </g>
+  <path class="arc" d="M112 104 A38 38 0 0 1 188 104" />
+  <path class="hub" d="M118 104 A32 32 0 0 1 182 104 Z" />
+  <text x="150" y="98" text-anchor="middle">RZ</text>
+</svg>
+<section class="marquee" aria-label="Marquee">
+  <div class="bulbs" aria-hidden="true"></div>
+  <div class="panel">
+    <p class="eyebrow kicker">★ Now showing ★</p>
+    <h1 class="display name">{site.name}</h1>
+    <p class="eyebrow tagline">
+      {site.tagline.split(/,\s*|\s*&\s*/).map((word, i) => <>{i > 0 && <span class="dot">·</span>}{word}</>)}
+    </p>
+  </div>
+</section>
+</div>
+
+<style>
+  .marquee-wrap { position: relative; }
+  .crown {
+    display: block;
+    width: clamp(200px, 30vw, 300px);
+    height: auto;
+    margin: 0 auto -2px;
+    filter: drop-shadow(0 0 18px rgba(246, 199, 91, 0.35));
+  }
+  .crown .fan { fill: #1f1614; stroke: var(--brass); stroke-width: 2; }
+  .crown .arc { fill: none; stroke: var(--brass); stroke-width: 1.5; }
+  .crown .rays { stroke: var(--bulb); stroke-width: 2; stroke-linecap: round; }
+  .crown .rays line:nth-child(odd) { animation: ray 2.4s ease-in-out infinite; }
+  .crown .rays line:nth-child(even) { animation: ray 2.4s ease-in-out 1.2s infinite; }
+  @keyframes ray { 50% { opacity: 0.35; } }
+  .crown .hub { fill: var(--velvet); stroke: var(--brass); stroke-width: 2; }
+  .crown text { font-family: var(--display); font-weight: 900; font-size: 26px; fill: var(--paper); letter-spacing: 1px; }
+  .marquee {
+    position: relative;
+    padding: 24px;
+    border-radius: 6px;
+    background: linear-gradient(#2a1d1b, #1a1211);
+    box-shadow:
+      0 0 0 1px #3d2c27,
+      0 40px 120px -40px rgba(246, 199, 91, 0.35);
+  }
+  /* one ring of bulbs, evenly spaced on every side, gently breathing */
+  .bulbs {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(circle, #fff6d6 0 2px, var(--bulb) 3.5px, rgba(246, 199, 91, 0.3) 5px, transparent 8px)
+      0 0 / 24px 24px round;
+    animation: glow 3.2s ease-in-out infinite;
+  }
+  @keyframes glow {
+    50% { filter: brightness(0.7); }
+  }
+  .panel {
+    position: relative;
+    text-align: center;
+    padding: clamp(1.75rem, 5vw, 3.5rem) 1rem;
+    border-radius: 3px;
+    color: #17110f;
+    background:
+      radial-gradient(ellipse at 50% 40%, #fffaf0 0%, #f4e8cf 60%, #e3d0aa 100%);
+    box-shadow: inset 0 0 40px rgba(120, 80, 20, 0.25);
+  }
+  .kicker {
+    color: #e3402c;
+    margin: 0 0 0.75rem;
+    text-shadow: 0 0 6px rgba(227, 64, 44, 0.55), 0 0 18px rgba(227, 64, 44, 0.35);
+    animation: neon 7s infinite;
+  }
+  @keyframes neon {
+    0%, 91%, 95%, 100% { opacity: 1; }
+    92%, 94% { opacity: 0.35; }
+  }
+  .name {
+    margin: 0;
+    font-weight: 900;
+    font-size: clamp(3rem, 13vw, 8.5rem);
+    letter-spacing: 0.03em;
+  }
+  .tagline {
+    margin: 1rem 0 0;
+    font-size: clamp(0.7rem, 2.2vw, 0.95rem);
+    color: #4a3d34;
+  }
+  .dot { margin: 0 0.8em; color: var(--ticket); }
+</style>

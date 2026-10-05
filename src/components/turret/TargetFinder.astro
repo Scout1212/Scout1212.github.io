@@ -1,0 +1,277 @@
+---
+// A browser recreation of the turret's target detection: every shape gets the
+// circularity score 4πA / P², and the roundest one above the threshold is the target.
+---
+
+<figure class="exhibit finder" data-finder>
+  <div class="exhibit-head">
+    <span class="eyebrow">▶ Interactive · How the turret sees</span>
+    <span class="hint">Drag the shapes around. Which ones fool it?</span>
+  </div>
+
+  <canvas width="1280" height="760" aria-label="Simulated camera view with shapes, each labelled with its circularity score"></canvas>
+
+  <div class="btn-row" role="group" aria-label="View">
+    <button class="btn" data-view="camera" aria-pressed="true">Camera view</button>
+    <button class="btn" data-view="edges" aria-pressed="false">Edge view</button>
+  </div>
+
+  <div class="controls">
+    <label class="control">
+      <span>Threshold <output data-out="threshold">0.85</output></span>
+      <input type="range" min="0.6" max="0.99" step="0.01" value="0.85" data-in="threshold" />
+    </label>
+    <label class="control">
+      <span>Dartboard tilt <output data-out="tilt">0°</output></span>
+      <input type="range" min="0" max="70" step="1" value="0" data-in="tilt" />
+    </label>
+  </div>
+
+  <p class="readout" aria-live="polite"></p>
+  <figcaption class="exhibit-note">
+    Circularity = 4π × area ÷ perimeter². A perfect circle scores 1.00, a square 0.79, a triangle 0.60. Try tilting the
+    dartboard: seen at an angle it becomes an ellipse and its score drops.
+  </figcaption>
+</figure>
+
+<script>
+  type Shape = {
+    kind: 'dartboard' | 'square' | 'triangle' | 'hexagon' | 'ellipse';
+    x: number;
+    y: number;
+    s: number; // size: radius-ish
+    color: string;
+  };
+
+  const W = 640;
+  const H = 380;
+
+  // exact area & perimeter for each shape, in canvas units
+  function geometry(sh: Shape, tilt: number) {
+    const s = sh.s;
+    switch (sh.kind) {
+      case 'dartboard':
+      case 'ellipse': {
+        const a = s;
+        const b = sh.kind === 'dartboard' ? s * Math.cos(tilt) : s * 0.42;
+        const h = ((a - b) / (a + b)) ** 2;
+        const P = Math.PI * (a + b) * (1 + (3 * h) / (10 + Math.sqrt(4 - 3 * h))); // Ramanujan
+        return { A: Math.PI * a * b, P, a, b };
+      }
+      case 'square': {
+        const side = s * 1.6;
+        return { A: side * side, P: 4 * side };
+      }
+      case 'triangle': {
+        const side = s * 2;
+        return { A: (Math.sqrt(3) / 4) * side * side, P: 3 * side };
+      }
+      case 'hexagon':
+        return { A: ((3 * Math.sqrt(3)) / 2) * s * s, P: 6 * s };
+    }
+  }
+
+  function path(ctx: CanvasRenderingContext2D, sh: Shape, tilt: number) {
+    const { x, y, s } = sh;
+    ctx.beginPath();
+    if (sh.kind === 'dartboard' || sh.kind === 'ellipse') {
+      const g = geometry(sh, tilt) as { a: number; b: number };
+      ctx.ellipse(x, y, g.a, g.b, 0, 0, Math.PI * 2);
+    } else if (sh.kind === 'square') {
+      const h = s * 0.8;
+      ctx.rect(x - h, y - h, h * 2, h * 2);
+    } else {
+      const n = sh.kind === 'triangle' ? 3 : 6;
+      const r = sh.kind === 'triangle' ? (s * 2) / Math.sqrt(3) : s;
+      for (let i = 0; i < n; i++) {
+        const t = -Math.PI / 2 + (i * 2 * Math.PI) / n;
+        const px = x + r * Math.cos(t);
+        const py = y + r * Math.sin(t) + (sh.kind === 'triangle' ? r * 0.2 : 0);
+        i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+      }
+      ctx.closePath();
+    }
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-finder]').forEach((root) => {
+    const canvas = root.querySelector('canvas')!;
+    const ctx = canvas.getContext('2d')!;
+    ctx.scale(canvas.width / W, canvas.height / H);
+    const readout = root.querySelector<HTMLElement>('.readout')!;
+    const inputs = {
+      threshold: root.querySelector<HTMLInputElement>('[data-in="threshold"]')!,
+      tilt: root.querySelector<HTMLInputElement>('[data-in="tilt"]')!,
+    };
+    const outs = {
+      threshold: root.querySelector<HTMLOutputElement>('[data-out="threshold"]')!,
+      tilt: root.querySelector<HTMLOutputElement>('[data-out="tilt"]')!,
+    };
+    let view: 'camera' | 'edges' = 'camera';
+
+    const shapes: Shape[] = [
+      { kind: 'square', x: 110, y: 110, s: 46, color: '#5a7fa8' },
+      { kind: 'triangle', x: 520, y: 105, s: 50, color: '#8e6bb0' },
+      { kind: 'hexagon', x: 125, y: 280, s: 50, color: '#5f9b74' },
+      { kind: 'ellipse', x: 505, y: 285, s: 70, color: '#b0874f' },
+      { kind: 'dartboard', x: 320, y: 195, s: 72, color: '#d4402e' },
+    ];
+
+    // fixed noise so the "camera" looks like a photo, not a diagram
+    const noise = Array.from({ length: 900 }, () => [Math.random() * W, Math.random() * H, Math.random()]);
+
+    function drawDartboard(sh: Shape, tilt: number) {
+      const g = geometry(sh, tilt) as { a: number; b: number };
+      const rings = ['#1b1b1b', '#e9dcc4', '#1b1b1b', '#e9dcc4', '#2f7d4a', '#d4402e'];
+      rings.forEach((c, i) => {
+        const k = 1 - i / rings.length;
+        ctx.beginPath();
+        ctx.ellipse(sh.x, sh.y, g.a * k, g.b * k, 0, 0, Math.PI * 2);
+        ctx.fillStyle = c;
+        ctx.fill();
+      });
+    }
+
+    function render() {
+      const threshold = Number(inputs.threshold.value);
+      const tilt = (Number(inputs.tilt.value) * Math.PI) / 180;
+      outs.threshold.textContent = threshold.toFixed(2);
+      outs.tilt.textContent = `${inputs.tilt.value}°`;
+
+      // background
+      if (view === 'camera') {
+        const grad = ctx.createLinearGradient(0, 0, 0, H);
+        grad.addColorStop(0, '#6d655c');
+        grad.addColorStop(1, '#4a443e');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, W, H);
+        for (const [nx, ny, nv] of noise) {
+          ctx.fillStyle = `rgba(${nv > 0.5 ? 255 : 0},${nv > 0.5 ? 255 : 0},${nv > 0.5 ? 255 : 0},0.06)`;
+          ctx.fillRect(nx, ny, 2, 2);
+        }
+      } else {
+        ctx.fillStyle = '#050403';
+        ctx.fillRect(0, 0, W, H);
+      }
+
+      // shapes + scores
+      const scored = shapes.map((sh) => {
+        const { A, P } = geometry(sh, tilt);
+        return { sh, score: (4 * Math.PI * A) / (P * P) };
+      });
+
+      for (const { sh } of scored) {
+        if (view === 'camera') {
+          ctx.save();
+          ctx.shadowColor = 'rgba(0,0,0,0.45)';
+          ctx.shadowBlur = 12;
+          ctx.shadowOffsetY = 6;
+          if (sh.kind === 'dartboard') drawDartboard(sh, tilt);
+          else {
+            path(ctx, sh, tilt);
+            ctx.fillStyle = sh.color;
+            ctx.fill();
+          }
+          ctx.restore();
+        } else {
+          path(ctx, sh, tilt);
+          ctx.strokeStyle = '#f3eada';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+      }
+
+      const passing = scored.filter((s) => s.score > threshold).sort((a, b) => b.score - a.score);
+      for (const { sh, score } of scored) {
+        const pass = score > threshold;
+        if (pass) {
+          path(ctx, sh, tilt);
+          ctx.strokeStyle = '#38e07a';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+        }
+        // score tag
+        const label = score.toFixed(2);
+        ctx.font = '600 13px "IBM Plex Mono", monospace';
+        const w = ctx.measureText(label).width + 12;
+        const ty = sh.y - sh.s - 26;
+        ctx.fillStyle = pass ? '#38e07a' : 'rgba(10,8,7,0.8)';
+        ctx.fillRect(sh.x - w / 2, ty, w, 20);
+        ctx.fillStyle = pass ? '#04140a' : '#f3eada';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, sh.x, ty + 10);
+      }
+
+      // the winner: red crosshair at its center
+      const best = passing[0];
+      if (best) {
+        const { x, y } = best.sh;
+        ctx.strokeStyle = '#ff3b2f';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y, 9, 0, Math.PI * 2);
+        ctx.moveTo(x - 20, y); ctx.lineTo(x - 5, y);
+        ctx.moveTo(x + 5, y); ctx.lineTo(x + 20, y);
+        ctx.moveTo(x, y - 20); ctx.lineTo(x, y - 5);
+        ctx.moveTo(x, y + 5); ctx.lineTo(x, y + 20);
+        ctx.stroke();
+      }
+
+      const names: Record<Shape['kind'], string> = {
+        dartboard: 'the dartboard', square: 'the square', triangle: 'the triangle', hexagon: 'the hexagon', ellipse: 'the ellipse',
+      };
+      if (!best) {
+        readout.innerHTML = `<span class="bad">No target found</span> — nothing is round enough to pass ${threshold.toFixed(2)}.`;
+      } else {
+        const fooled = best.sh.kind !== 'dartboard';
+        readout.innerHTML =
+          `🎯 Target: <b>${names[best.sh.kind]}</b> at pixel (${Math.round(best.sh.x * 2)}, ${Math.round(best.sh.y * 2)}), score ${best.score.toFixed(2)}` +
+          (fooled ? ` — <span class="bad">fooled!</span>` : ` — <span class="ok">locked on</span>`) +
+          (passing.length > 1 ? ` · ${passing.length - 1} other shape${passing.length > 2 ? 's' : ''} also passed` : '');
+      }
+    }
+
+    // dragging
+    let drag: { sh: Shape; dx: number; dy: number } | null = null;
+    const toLocal = (e: PointerEvent) => {
+      const r = canvas.getBoundingClientRect();
+      return { x: ((e.clientX - r.left) / r.width) * W, y: ((e.clientY - r.top) / r.height) * H };
+    };
+    canvas.addEventListener('pointerdown', (e) => {
+      const p = toLocal(e);
+      const tilt = (Number(inputs.tilt.value) * Math.PI) / 180;
+      for (let i = shapes.length - 1; i >= 0; i--) {
+        path(ctx, shapes[i], tilt);
+        // isPointInPath works in the untransformed canvas space
+        if (ctx.isPointInPath(p.x * (canvas.width / W), p.y * (canvas.height / H))) {
+          const [sh] = shapes.splice(i, 1);
+          shapes.push(sh); // bring to front
+          drag = { sh, dx: p.x - sh.x, dy: p.y - sh.y };
+          canvas.setPointerCapture(e.pointerId);
+          break;
+        }
+      }
+    });
+    canvas.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      const p = toLocal(e);
+      drag.sh.x = Math.max(30, Math.min(W - 30, p.x - drag.dx));
+      drag.sh.y = Math.max(50, Math.min(H - 30, p.y - drag.dy));
+      render();
+    });
+    const end = () => (drag = null);
+    canvas.addEventListener('pointerup', end);
+    canvas.addEventListener('pointercancel', end);
+
+    root.querySelectorAll<HTMLButtonElement>('[data-view]').forEach((b) =>
+      b.addEventListener('click', () => {
+        view = b.dataset.view as typeof view;
+        root.querySelectorAll('[data-view]').forEach((o) => o.setAttribute('aria-pressed', String(o === b)));
+        render();
+      }),
+    );
+    Object.values(inputs).forEach((i) => i.addEventListener('input', render));
+    document.fonts?.ready.then(render);
+    render();
+  });
+</script>

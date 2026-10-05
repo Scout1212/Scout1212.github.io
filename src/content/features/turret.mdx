@@ -1,0 +1,75 @@
+---
+title: The Self-Aiming Turret
+reel: 1
+logline: A team-built Raspberry Pi launcher that photographs a target, finds its center with computer vision, and works out the angle it needs to hit it.
+status: In production
+released: 2026 —
+context: Class project · Team build
+genres: [Robotics, Linux, CAD, Computer Vision]
+poster:
+  src: /media/turret/cad.jpg
+  alt: Onshape CAD render of the turret — a ring-gear base, stepper drive gears, and launcher housing
+team:
+  # TODO: replace "Teammate" with real names (and an optional href link) once Robert sends them.
+  - { name: Robert Zamora, role: "CAD design · Raspberry Pi & Linux · Bash tooling", me: true }
+  - { name: Teammate, role: "Python — vision, motors & physics" }
+credits:
+  - { role: Brain, value: Raspberry Pi (headless Linux) }
+  - { role: Eyes, value: Pi Camera · OpenCV }
+  - { role: Muscle, value: 2× stepper motors · DC motor }
+  - { role: Range finder, value: Ultrasonic distance sensor }
+  - { role: Set design, value: Onshape (10 assemblies) }
+  - { role: Screenplay, value: Python · Bash }
+---
+
+import CadHotspots from '../../components/turret/CadHotspots.astro';
+import BoothTerminal from '../../components/turret/BoothTerminal.astro';
+import TargetFinder from '../../components/turret/TargetFinder.astro';
+import TrajectorySim from '../../components/turret/TrajectorySim.astro';
+
+## Synopsis
+
+Point a camera at a dartboard and the turret should do the rest: find the bullseye, turn to face it, tilt to the right angle, and fire. We built it as a team for a class, and it's still being built.
+
+The work split cleanly. **My teammate wrote the Python** — the computer vision, the motor control, and the physics. **I designed the turret in CAD and ran the Raspberry Pi**: setting up its Linux system, keeping it running, and writing the Bash tools the whole team used to get code onto it and run it.
+
+## The set — designing it in CAD
+
+I modeled every part in Onshape as its own sub-assembly — the gear train, the Pi holder, the sensor enclosure, the motor mounts — and mated them into the full build. The key idea is the base: the whole launcher sits on one large ring gear, so a single stepper motor can swing the entire turret.
+
+<CadHotspots />
+
+## The projection booth — running a headless Pi
+
+The Pi had no monitor or keyboard — it lived inside the turret. So I set it up to be driven entirely from a laptop over the network: flashing its OS, configuring SSH key login so nobody had to type a password, and reaching it by name (`WiseProject.local`) instead of hunting for its IP address.
+
+Then I wrote a small set of Bash scripts so the rest of the team didn't need to know any of that. One command uploads the latest code, one runs any script on the Pi, one snaps a photo and sends it straight back to the laptop. When we re-flashed the SD card, another cleaned up the old SSH identity so we could pair again.
+
+<BoothTerminal />
+
+## How the turret sees
+
+My teammate's vision code takes a still from the Pi camera, turns it into outlines with Canny edge detection, and scores every closed shape for how round it is. The roundest shape above a threshold becomes the aim point. Here's that idea running in your browser:
+
+<TargetFinder />
+
+The real code is only a few lines at its heart:
+
+```python
+# A perfect circle scores 1.0; anything above 0.85 counts as a target.
+circularity = (4 * np.pi * area) / (perimeter ** 2)
+if circularity > 0.85:
+    (x, y), radius = cv2.minEnclosingCircle(cnt)
+    valid_circles.append((circularity, (int(x), int(y)), int(radius)))
+```
+
+## Hitting the target
+
+Knowing *where* the target is isn't enough — the turret has to know *how hard it throws*. The plan is a calibration run: fire at 15°, 30°, 45°, 60° and 75°, measure each landing spot, and fit range against sin(2θ) to recover the launch speed. With the speed known, the projectile equation gives the exact barrel angle for any target.
+
+<TrajectorySim />
+
+## Still in the edit
+
+- **Done:** full CAD assembly, headless Pi setup and the Bash toolchain, target detection, stepper control.
+- **In progress:** the calibration run and the aiming math — connecting the camera's pixel coordinates to real-world angles is the next big step.

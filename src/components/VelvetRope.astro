@@ -1,0 +1,40 @@
+---
+// Brass stanchions with a drooping velvet rope. Purely decorative.
+---
+
+<svg class="rope" viewBox="0 0 520 130" aria-hidden="true">
+  <defs>
+    <linearGradient id="brass" x1="0" x2="1">
+      <stop offset="0" stop-color="#7a5a1e" />
+      <stop offset="0.45" stop-color="#f3d27a" />
+      <stop offset="1" stop-color="#8a6624" />
+    </linearGradient>
+    <radialGradient id="brass-ball" cx="0.35" cy="0.35" r="0.7">
+      <stop offset="0" stop-color="#fff1c0" />
+      <stop offset="0.4" stop-color="#d9b04f" />
+      <stop offset="1" stop-color="#6b4c17" />
+    </radialGradient>
+  </defs>
+  <g class="ropes">
+    <path d="M40 40 Q150 112 260 40" stroke="#4a0d12" stroke-width="11" />
+    <path d="M260 40 Q370 112 480 40" stroke="#4a0d12" stroke-width="11" />
+    <path d="M40 40 Q150 112 260 40" stroke="#a8333a" stroke-width="7" />
+    <path d="M260 40 Q370 112 480 40" stroke="#a8333a" stroke-width="7" />
+    <path d="M44 38 Q150 104 256 38" stroke="#e0646a" stroke-width="1.5" opacity="0.6" />
+    <path d="M264 38 Q370 104 476 38" stroke="#e0646a" stroke-width="1.5" opacity="0.6" />
+  </g>
+  {
+    [40, 260, 480].map((x) => (
+      <g>
+        <ellipse cx={x} cy="122" rx="24" ry="6" fill="url(#brass)" />
+        <rect x={x - 5} y="34" width="10" height="88" rx="3" fill="url(#brass)" />
+        <circle cx={x} cy="30" r="11" fill="url(#brass-ball)" />
+      </g>
+    ))
+  }
+</svg>
+
+<style>
+  .rope { display: block; width: min(420px, 90%); height: auto; margin: 0 auto; overflow: visible; }
+  .ropes path { fill: none; stroke-linecap: round; }
+</style>
